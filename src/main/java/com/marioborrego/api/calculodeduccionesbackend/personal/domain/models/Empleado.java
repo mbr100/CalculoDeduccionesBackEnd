@@ -1,6 +1,6 @@
 package com.marioborrego.api.calculodeduccionesbackend.personal.domain.models;
 
-import com.marioborrego.api.calculodeduccionesbackend.empresa.domain.models.Empresa;
+import com.marioborrego.api.calculodeduccionesbackend.empresa.domain.models.Economico;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,10 +25,11 @@ public class Empleado {
     private String telefono;
     private String email;
     private String urlFoto;
+    private boolean esPersonalInvestigador;
 
     @ManyToOne()
-    @JoinColumn(name = "id_empresa", nullable = false)
-    private Empresa empresa;
+    @JoinColumn(name = "id_economico", nullable = false)
+    private Economico economico;
 
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "id_retribucion")
@@ -38,10 +39,14 @@ public class Empleado {
     @JoinColumn(name = "id_bases_cotizacion")
     private BasesCotizacion basesCotizacion;
 
-    @OneToMany(mappedBy = "empleado", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<BajaLaboral> bajasLaborales = new ArrayList<>();
-
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "id_horas_empleado")
     private HorasEmpleado horasEmpleado;
+
+    @OneToMany(mappedBy = "empleado", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<BajaLaboral> bajasLaborales = new ArrayList<>();
+
+    @OneToOne(optional = true, cascade = CascadeType.ALL)
+    @JoinColumn(name = "id_bonificaciones_trabajador")
+    private BonificacionesTrabajador bonificacionesTrabajador;
 }

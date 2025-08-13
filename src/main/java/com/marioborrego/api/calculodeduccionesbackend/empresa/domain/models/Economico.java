@@ -11,12 +11,12 @@ import java.util.List;
 @Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity(name = "Empresa")
-public class Empresa {
+@Entity(name = "empresa_economico")
+public class Economico {
     @Id
-    @Column(name = "id_empresa")
-    @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
-    private int idEmpresa;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_economico", nullable = false, unique = true)
+    private int idEconomico;
     private String nombre;
     private String cif;
     private String direccion;
@@ -26,8 +26,11 @@ public class Empresa {
     private Long horasConvenio;
     private String urllogo;
     private String urlWeb;
-    private String CNAE; // Código Nacional de Actividad Económica
+    private String CNAE;
+    private int anualidad;
+    private boolean esPyme;
+    private boolean activo;
 
-    @OneToMany(mappedBy = "empresa", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "economico", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Empleado> empleados = new ArrayList<>();
 }

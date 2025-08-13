@@ -10,7 +10,8 @@ import java.time.LocalDate;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity(name = "BajaLaboral")
+@Entity()
+@Table(name = "baja_laboral")
 public class BajaLaboral {
 
     @Id
@@ -26,8 +27,8 @@ public class BajaLaboral {
     @JoinColumn(name = "horas_empleado_id", nullable = false)
     private HorasEmpleado horasEmpleado;
 
-    // Opcional: relación directa con el empleado (si se necesita acceso rápido desde empleado)
     @ManyToOne
-    @JoinColumn(name = "id_empleado", nullable = false)
+    @JoinColumn(name = "id_empleado", referencedColumnName = "id_empleado", nullable = false)
     private Empleado empleado;
+
 }
