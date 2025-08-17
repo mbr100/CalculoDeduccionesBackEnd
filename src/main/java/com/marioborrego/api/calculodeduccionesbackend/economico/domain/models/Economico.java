@@ -1,4 +1,4 @@
-package com.marioborrego.api.calculodeduccionesbackend.empresa.domain.models;
+package com.marioborrego.api.calculodeduccionesbackend.economico.domain.models;
 
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.Empleado;
 import jakarta.persistence.*;
@@ -26,10 +26,16 @@ public class Economico {
     private Long horasConvenio;
     private String urllogo;
     private String urlWeb;
-    private String CNAE;
+    private int CNAE;
     private int anualidad;
     private boolean esPyme;
     private boolean activo;
+
+    @Column(columnDefinition = "TEXT")
+    private String presentacionEmpresa;
+
+    @Column(columnDefinition = "TEXT")
+    private String descripcionIDI;
 
     @OneToMany(mappedBy = "economico", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Empleado> empleados = new ArrayList<>();

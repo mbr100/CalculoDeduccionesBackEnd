@@ -1,6 +1,6 @@
-package com.marioborrego.api.calculodeduccionesbackend.empresa.domain.repository;
+package com.marioborrego.api.calculodeduccionesbackend.economico.domain.repository;
 
-import com.marioborrego.api.calculodeduccionesbackend.empresa.domain.models.Economico;
+import com.marioborrego.api.calculodeduccionesbackend.economico.domain.models.Economico;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,4 +14,9 @@ public interface EconomicoRepository extends JpaRepository<Economico, Integer> {
 
     @Query("SELECT e FROM empresa_economico e WHERE e.activo = true")
     Page<Economico> findAllActivosPaginado(Pageable pageable);
+
+    @Query("SELECT e FROM empresa_economico e WHERE e.cif = ?1 AND e.anualidad = ?2 AND e.activo = true")
+    List<Economico> comprobarExistencia(String cif, Integer anualidad);
+
+    List<Economico> findByCifAndAnualidadAndActivoTrue(String cif, Integer anualidad);
 }

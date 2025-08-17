@@ -55,3 +55,6 @@ spring:
 logging:
     level:
         org.springframework.integration: DEBUG
+
+springdoc:
+    show-actuator: true

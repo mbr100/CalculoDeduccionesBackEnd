@@ -1,4 +1,4 @@
-package com.marioborrego.api.calculodeduccionesbackend.empresa.domain.models;
+package com.marioborrego.api.calculodeduccionesbackend.economico.domain.models;
 
 import jakarta.persistence.*;
 import lombok.*;

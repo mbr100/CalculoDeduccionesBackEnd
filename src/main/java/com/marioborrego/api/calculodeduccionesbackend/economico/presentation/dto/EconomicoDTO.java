@@ -1,11 +1,15 @@
-package com.marioborrego.api.calculodeduccionesbackend.empresa.presentation.dto;
+package com.marioborrego.api.calculodeduccionesbackend.economico.presentation.dto;
 
-import lombok.Value;
+import lombok.*;
 
 import java.io.Serializable;
 
-@Value
-public class EmpresaDto implements Serializable {
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class EconomicoDTO{
+    int id;
     String nombre;
     String cif;
     String direccion;
@@ -15,7 +19,9 @@ public class EmpresaDto implements Serializable {
     Long horasConvenio;
     String urllogo;
     String urlWeb;
-    String CNAE;
+    int cnae;
     int anualidad;
     boolean esPyme;
+    String presentacionEmpresa;
+    String descripcionIDI;
 }

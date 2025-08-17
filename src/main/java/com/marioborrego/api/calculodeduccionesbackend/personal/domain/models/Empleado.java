@@ -1,6 +1,6 @@
 package com.marioborrego.api.calculodeduccionesbackend.personal.domain.models;
 
-import com.marioborrego.api.calculodeduccionesbackend.empresa.domain.models.Economico;
+import com.marioborrego.api.calculodeduccionesbackend.economico.domain.models.Economico;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -21,10 +21,6 @@ public class Empleado {
     private String nombre;
     private String apellidos;
     private String DNI;
-    private String direccion;
-    private String telefono;
-    private String email;
-    private String urlFoto;
     private boolean esPersonalInvestigador;
 
     @ManyToOne()
