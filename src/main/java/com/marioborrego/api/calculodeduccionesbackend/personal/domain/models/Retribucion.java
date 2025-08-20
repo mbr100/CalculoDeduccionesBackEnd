@@ -1,5 +1,6 @@
 package com.marioborrego.api.calculodeduccionesbackend.personal.domain.models;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -29,5 +30,6 @@ public class Retribucion {
                 + (rentas_exentas_190 != null ? rentas_exentas_190 : 0L);
     }
     @OneToOne(mappedBy = "retribucion")
-    private Empleado empleado;
+    @JsonBackReference
+    private Personal personal;
 }

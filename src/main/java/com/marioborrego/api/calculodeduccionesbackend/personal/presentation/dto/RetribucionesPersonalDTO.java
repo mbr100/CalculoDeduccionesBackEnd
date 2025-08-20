@@ -1,0 +1,22 @@
+package com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class RetribucionesPersonalDTO {
+    private int idPersonal;
+    private String nombre;
+    private String dni;
+    private int idRetribucion;
+    private Long importeRetribucionNoIT;
+    private Long importeRetribucionExpecie;
+    private Long aportacionesPrevencionSocial;
+    private Long dietasViajeExentas;
+    private Long rentasExentas190;
+}

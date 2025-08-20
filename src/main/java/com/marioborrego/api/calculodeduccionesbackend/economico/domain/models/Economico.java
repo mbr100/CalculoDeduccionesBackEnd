@@ -1,6 +1,6 @@
 package com.marioborrego.api.calculodeduccionesbackend.economico.domain.models;
 
-import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.Empleado;
+import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.Personal;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -38,5 +38,5 @@ public class Economico {
     private String descripcionIDI;
 
     @OneToMany(mappedBy = "economico", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Empleado> empleados = new ArrayList<>();
+    private List<Personal> personal = new ArrayList<>();
 }

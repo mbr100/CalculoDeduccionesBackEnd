@@ -13,8 +13,8 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity(name = "HorasEmpleado")
-public class HorasEmpleado {
+@Entity(name = "HorasPersonal")
+public class HorasPersonal {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,10 +27,12 @@ public class HorasEmpleado {
 
     private Long horasConvenioAnual;
 
-    @OneToOne(mappedBy = "horasEmpleado")
-    private Empleado empleado;
+    private Long horasMaximasAnuales;
 
-    @OneToMany(mappedBy = "horasEmpleado", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(mappedBy = "horasPersonal")
+    private Personal personal;
+
+    @OneToMany(mappedBy = "horasPersonal", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<BajaLaboral> bajas = new ArrayList<>();
 
     /**
@@ -66,10 +68,13 @@ public class HorasEmpleado {
                 .sum();
     }
 
-    /**
-     * Devuelve las horas efectivas trabajadas: horas teóricas - horas de baja.
-     */
     public double getHorasEfectivas() {
         return Math.max(getHorasTeoricas() - getHorasDeBaja(), 0.0);
+    }
+
+    @PrePersist
+    @PreUpdate
+    private void actualizarHorasMaximas() {
+        this.horasMaximasAnuales = (long) getHorasEfectivas();
     }
 }

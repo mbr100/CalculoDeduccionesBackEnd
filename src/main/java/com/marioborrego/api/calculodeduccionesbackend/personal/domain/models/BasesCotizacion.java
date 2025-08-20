@@ -45,5 +45,5 @@ public class BasesCotizacion {
     }
 
     @OneToOne
-    private Empleado empleado;  // Relación con la entidad Empleado
+    private Personal persona;  // Relación con la entidad Personal
 }

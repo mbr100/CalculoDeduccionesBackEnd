@@ -21,14 +21,24 @@ public class BajaLaboral {
     private LocalDate fechaInicio;
     private LocalDate fechaFin;
 
-    private String motivo; // Opcional: enfermedad común, accidente laboral, maternidad, etc.
+    private Long horasDeBaja;
+
 
     @ManyToOne
-    @JoinColumn(name = "horas_empleado_id", nullable = false)
-    private HorasEmpleado horasEmpleado;
+//    @JoinColumn(name = "horas_personal_id", nullable = false)
+    private HorasPersonal horasPersonal;
 
     @ManyToOne
-    @JoinColumn(name = "id_empleado", referencedColumnName = "id_empleado", nullable = false)
-    private Empleado empleado;
+    @JoinColumn(name = "id_personal", referencedColumnName = "id_personal", nullable = false)
+    private Personal personal;
 
+
+    @PrePersist
+    @PreUpdate
+    @PreRemove
+    private void notificarCambio() {
+        if (horasPersonal != null) {
+            horasPersonal.setHorasMaximasAnuales((long) horasPersonal.getHorasEfectivas());
+        }
+    }
 }
