@@ -1,4 +1,4 @@
-package com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto;
+package com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bbcc;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,8 +9,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ActualizarRetribucionDTO {
-    private int idRetribucion;
+public class ActualizarBbccPersonalDTO {
+    private int idBbccPersonal;
     private String campoActualizado;
     private Double valor;
 }
+

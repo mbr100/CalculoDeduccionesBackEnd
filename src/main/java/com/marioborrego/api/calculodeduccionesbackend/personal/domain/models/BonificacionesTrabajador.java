@@ -21,4 +21,7 @@ public class BonificacionesTrabajador {
     private TiposBonificacion tipoBonificacion;
 
     private BigDecimal porcentajeBonificacion;
+
+    @OneToOne(mappedBy = "bonificacionesTrabajador")
+    private Personal personal;
 }

@@ -1,4 +1,4 @@
-package com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto;
+package com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,9 +9,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ActualizarBbccPersonalDTO {
-    private int idBbccPersonal;
+public class ActualizarAltaEjercicioDTO {
+    private Long idAltaEjercicio;
     private String campoActualizado;
-    private Double valor;
+    private String valor;
 }
-

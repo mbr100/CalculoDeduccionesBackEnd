@@ -1,4 +1,4 @@
-package com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto;
+package com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class ListarPersonalEconomicoDTO {
+public class PersonalEconomicoDTO {
     private int idPersona;
     private String nombre;
     private String apellidos;
@@ -21,4 +21,5 @@ public class ListarPersonalEconomicoDTO {
     private String titulacion3;
     private String titulacion4;
     private boolean esPersonalInvestigador;
+    private int idEconomico;
 }

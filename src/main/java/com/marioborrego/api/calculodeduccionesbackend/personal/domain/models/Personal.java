@@ -47,7 +47,7 @@ public class Personal {
     @JoinColumn(name = "id_horas_empleado")
     private HorasPersonal horasPersonal;
 
-    @OneToMany(mappedBy = "personal", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "personal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<BajaLaboral> bajasLaborales = new ArrayList<>();
 
     @OneToOne(cascade = CascadeType.ALL)

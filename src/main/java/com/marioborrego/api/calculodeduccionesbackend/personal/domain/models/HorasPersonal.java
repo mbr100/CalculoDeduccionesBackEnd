@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,16 +33,14 @@ public class HorasPersonal {
     @OneToOne(mappedBy = "horasPersonal")
     private Personal personal;
 
-    @OneToMany(mappedBy = "horasPersonal", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "horasPersonal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<BajaLaboral> bajas = new ArrayList<>();
 
     /**
      * Calcula los días de alta en el ejercicio (entre alta y baja en el año fiscal).
      */
     private long getDiasAltaEjercicio() {
-        return fechaAltaEjercicio != null && fechaBajaEjercicio != null
-                ? fechaAltaEjercicio.until(fechaBajaEjercicio).getDays() + 1
-                : 0;
+        return ChronoUnit.DAYS.between(fechaAltaEjercicio, fechaBajaEjercicio) + 1;
     }
 
     /**
@@ -49,6 +48,8 @@ public class HorasPersonal {
      */
     private double getHorasTeoricas() {
         if (horasConvenioAnual == null || horasConvenioAnual <= 0) return 0;
+        System.out.printf("horasConvenioAnual: %d, getDiasAltaEjercicio: %d%n", horasConvenioAnual, getDiasAltaEjercicio());
+        System.out.printf("horasTeoricas: %f%n", getDiasAltaEjercicio() * (horasConvenioAnual / 365.0));
         return getDiasAltaEjercicio() * (horasConvenioAnual / 365.0);
     }
 
@@ -56,15 +57,8 @@ public class HorasPersonal {
      * Calcula las horas de baja dentro del ejercicio.
      */
     private double getHorasDeBaja() {
-        double horasDia = (horasConvenioAnual != null ? horasConvenioAnual : 1800) / 365.0;
         return bajas.stream()
-                .mapToDouble(baja -> {
-                    LocalDate inicio = baja.getFechaInicio().isBefore(fechaAltaEjercicio) ? fechaAltaEjercicio : baja.getFechaInicio();
-                    LocalDate fin = baja.getFechaFin().isAfter(fechaBajaEjercicio) ? fechaBajaEjercicio : baja.getFechaFin();
-                    if (fin.isBefore(inicio)) return 0.0;
-                    long dias = inicio.until(fin).getDays() + 1;
-                    return dias * horasDia;
-                })
+                .mapToDouble(BajaLaboral::getHorasDeBaja)
                 .sum();
     }
 
@@ -75,6 +69,20 @@ public class HorasPersonal {
     @PrePersist
     @PreUpdate
     private void actualizarHorasMaximas() {
-        this.horasMaximasAnuales = (long) getHorasEfectivas();
+        long horasEfectivas = (long) getHorasEfectivas();
+        if (horasEfectivas > horasConvenioAnual) {
+            this.horasMaximasAnuales = horasConvenioAnual;
+        } else {
+            this.horasMaximasAnuales = (long) getHorasEfectivas();
+        }
+    }
+
+    public void actualizarHorasMaximasAnuales() {
+        long horasEfectivas = (long) getHorasEfectivas();
+        if (horasEfectivas > horasConvenioAnual) {
+            this.horasMaximasAnuales = horasConvenioAnual;
+        } else {
+            this.horasMaximasAnuales = (long) getHorasEfectivas();
+        }
     }
 }

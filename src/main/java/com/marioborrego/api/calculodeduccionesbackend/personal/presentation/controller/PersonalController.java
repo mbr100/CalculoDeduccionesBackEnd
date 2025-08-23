@@ -1,7 +1,20 @@
 package com.marioborrego.api.calculodeduccionesbackend.personal.presentation.controller;
 
+import com.marioborrego.api.calculodeduccionesbackend.configuration.DTO.PageResponse;
 import com.marioborrego.api.calculodeduccionesbackend.personal.business.interfaces.PersonalService;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.*;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.ActualizarAltaEjercicioDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.AltaEjercicioDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bbcc.ActualizarBbccPersonalDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bbcc.BbccPersonalDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bajasLaborales.ActualizarBajaLaboralDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bajasLaborales.BajasLaboralesDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bajasLaborales.CrearBajaLaboralDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bajasLaborales.ListadoPersonalSelectorEconomicoDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.ListarPersonalEconomicoDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.PersonalEconomicoDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.retribuciones.ActualizarRetribucionDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.retribuciones.RetribucionesPersonalDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -14,6 +27,8 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 
 @RestController()
@@ -33,9 +48,7 @@ public class PersonalController {
             @ApiResponse(responseCode = "500", description = "Error al obtener el listado de personal económico")
     })
     @GetMapping("/economico/{idEconomico}")
-    public ResponseEntity<Page<ListarPersonalEconomicoDTO>> listadoPersonalEconomico(
-            @PageableDefault(page = 0, size = 20, sort = "nombre", direction = Sort.Direction.ASC) Pageable pageable,
-            @PathVariable Long idEconomico) {
+    public ResponseEntity<Page<ListarPersonalEconomicoDTO>> listadoPersonalEconomico(@PageableDefault(size = 20, sort = "nombre", direction = Sort.Direction.ASC) Pageable pageable, @PathVariable Long idEconomico) {
 
         log.info("Petición para obtener el listado de personal económico: {}", idEconomico);
         try {
@@ -51,6 +64,29 @@ public class PersonalController {
 
         } catch (Exception e) {
             log.error("Error al obtener el listado de personal económico: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Obtener listado de personal económico selector", description = "Permite obtener un listado de personal económico selector para un económico específico.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Listado de personal económico selector obtenido correctamente"),
+            @ApiResponse(responseCode = "204", description = "No se encontró personal económico selector para el ID proporcionado"),
+            @ApiResponse(responseCode = "500", description = "Error al obtener el listado de personal económico selector")
+    })
+    @GetMapping("/selector/{idEconomico}")
+    public ResponseEntity<List<ListadoPersonalSelectorEconomicoDTO>> listadoPersonalEconomicoSelector(@PathVariable int idEconomico) {
+        log.info("Petición para obtener el listado de personal económico selector: {}", idEconomico);
+        try {
+            List<ListadoPersonalSelectorEconomicoDTO> listado = personalService.obtenerTodoPersonalSelectorEconomico(idEconomico);
+            if (listado == null) {
+                log.warn("No se encontró personal económico selector para el ID: {}", idEconomico);
+                return ResponseEntity.noContent().build();
+            }
+            log.info("Listado de personal económico selector obtenido correctamente: {}", listado.size());
+            return ResponseEntity.ok(listado);
+        } catch (Exception e) {
+            log.error("Error al obtener el listado de personal económico selector: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -120,14 +156,14 @@ public class PersonalController {
             @ApiResponse(responseCode = "500", description = "Error interno del servidor al obtener las retribuciones del personal")
     })
     @GetMapping("/{idEconomico}/retribuciones")
-    public ResponseEntity<Page<RetribucionesPersonalDTO>> obtenerRetribucionesPersonal(@PathVariable Long idEconomico) {
+    public ResponseEntity<Page<RetribucionesPersonalDTO>> obtenerRetribucionesPersonal(@PageableDefault(size = 20, sort = "nombre", direction = Sort.Direction.ASC) Pageable pageable, @PathVariable Long idEconomico) {
         log.info("Petición para obtener las retribuciones del personal del economico con ID: {}", idEconomico);
         try {
             if (idEconomico<= 0) {
-                log.warn("ID económico no válido: {}", idEconomico);
+                log.warn("ID económico no válido para retribuciones: {}", idEconomico);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
             }
-            Page<RetribucionesPersonalDTO> retribuciones = personalService.obtenerRetribucionesPersonalPorEconomico(idEconomico);
+            Page<RetribucionesPersonalDTO> retribuciones = personalService.obtenerRetribucionesPersonalPorEconomico(idEconomico, pageable );
             return ResponseEntity.status(HttpStatus.OK).body(retribuciones);
         } catch (Exception e) {
             log.error("Error al obtener las retribuciones del personal: {}", e.getMessage());
@@ -142,14 +178,14 @@ public class PersonalController {
             @ApiResponse(responseCode = "500", description = "Error interno del servidor al obtener las cotizaciones del personal")
     })
     @GetMapping("/{idEconomico}/cotizaciones")
-    public ResponseEntity<Page<BbccPersonalDTO>> obtenerCotizacionesPersonal(@PathVariable Long idEconomico) {
+    public ResponseEntity<Page<BbccPersonalDTO>> obtenerCotizacionesPersonal(@PageableDefault(size = 20, sort = "nombre", direction = Sort.Direction.ASC) Pageable pageable, @PathVariable Long idEconomico) {
         log.info("Petición para obtener las cotizaciones del personal del economico con ID: {}", idEconomico);
         try {
             if (idEconomico <= 0) {
                 log.warn("ID económico no válido: {}", idEconomico);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
             }
-            Page<BbccPersonalDTO> cotizaciones = personalService.obtenerCotizacionesPersonalPorEconomico(idEconomico);
+            Page<BbccPersonalDTO> cotizaciones = personalService.obtenerCotizacionesPersonalPorEconomico(idEconomico, pageable);
             return ResponseEntity.status(HttpStatus.OK).body(cotizaciones);
         } catch (Exception e) {
             log.error("Error al obtener las cotizaciones del personal: {}", e.getMessage());
@@ -168,7 +204,7 @@ public class PersonalController {
         log.info("Petición para actualizar la retribución con ID: {}", actualizarRetribucionDTO.getIdRetribucion());
         try {
             if (actualizarRetribucionDTO.getIdRetribucion() == 0 || actualizarRetribucionDTO.getCampoActualizado() == null || actualizarRetribucionDTO.getValor() == null) {
-                log.warn("Datos de actualización incompletos: {}", actualizarRetribucionDTO);
+                log.warn("Datos de actualización retribucion personal incompletos: {}", actualizarRetribucionDTO);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
             }
             this.personalService.actualizarRetribucionPersonal(actualizarRetribucionDTO);
@@ -199,6 +235,167 @@ public class PersonalController {
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (Exception e) {
             log.error("Error al actualizar las bases de cotización del personal: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Obtener listado de personal con los datos alta ejercicio", description = "Permite obtener un listado de personal con los datos alta ejercicio para un económico específico.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Listado de personal con datos alta ejercicio obtenido correctamente"),
+            @ApiResponse(responseCode = "204", description = "No se encontró personal con datos alta ejercicio para el ID proporcionado"),
+            @ApiResponse(responseCode = "500", description = "Error al obtener el listado de personal con datos alta ejercicio")
+    })
+    @GetMapping("/{idEconomico}/alta-ejercicio")
+    public ResponseEntity<Page<AltaEjercicioDTO>> listadoDePersonalAltaEjercicio(@PageableDefault(size = 20) Pageable pageable, @PathVariable Long idEconomico) {
+        log.info("Petición para obtener el listado de alta de personal económico: {}", idEconomico);
+        try {
+            Page<AltaEjercicioDTO> listado = personalService.obtenerTodoPersonalAltaEjercicio(idEconomico, pageable);
+            if (listado == null || listado.isEmpty()) {
+                log.warn("No se encontró listado de alta personal económico para el ID: {}", idEconomico);
+                return ResponseEntity.noContent().build();
+            }
+            log.info("Listado de alta  de personal económico obtenido correctamente: {}", listado.getTotalElements());
+            return ResponseEntity.ok(listado);
+        } catch (Exception e) {
+            log.error("Error al obtener el listado de alta  de personal económico: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Actualizar alta ejercicio del personal", description = "Permite actualizar el alta ejercicio de un personal específico dado el Id de Alta Ejercicio.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Alta ejercicio del personal actualizado correctamente"),
+            @ApiResponse(responseCode = "400", description = "Error al actualizar el alta ejercicio del personal"),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor al actualizar el alta ejercicio del personal")
+    })
+    @PutMapping("/alta-ejercicio")
+    public ResponseEntity<Void> actualizarAltaEjercicio(@RequestBody ActualizarAltaEjercicioDTO actualizarAltaEjercicioDTO) {
+        log.info("Petición para actualizar el alta ejercicio con ID: {}", actualizarAltaEjercicioDTO.getIdAltaEjercicio());
+        log.info("Datos a cambiar: campo {}, valor {}", actualizarAltaEjercicioDTO.getCampoActualizado(), actualizarAltaEjercicioDTO.getValor());
+        try {
+            if (actualizarAltaEjercicioDTO.getIdAltaEjercicio() <= 0 || actualizarAltaEjercicioDTO.getCampoActualizado() == null || actualizarAltaEjercicioDTO.getValor() == null) {
+                log.warn("Datos de actualización alta ejercicio incompletos: {}", actualizarAltaEjercicioDTO);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+            this.personalService.actualizarAltaEjercicio(actualizarAltaEjercicioDTO);
+            log.info("Alta ejercicio actualizado correctamente: {}", actualizarAltaEjercicioDTO.getIdAltaEjercicio());
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        } catch (Exception e) {
+            log.error("Error al actualizar el alta ejercicio: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Obtener bajas laborales del personal", description = "Permite obtener las bajas laborales de un personal específico por su ID económico.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Bajas laborales del personal obtenidas correctamente"),
+            @ApiResponse(responseCode = "404", description = "No se encontraron bajas laborales para el ID proporcionado"),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor al obtener las bajas laborales del personal")
+    })
+    @GetMapping("/{idEconomico}/bajas-laborales")
+    public ResponseEntity<Page<BajasLaboralesDTO>> obtenerBajasLaborales(@PageableDefault(size = 20, sort = "fechaInicio", direction = Sort.Direction.DESC) Pageable pageable, @PathVariable Long idEconomico) {
+        log.info("Petición para obtener las bajas laborales del personal del económico con ID: {}", idEconomico);
+        try {
+            if (idEconomico <= 0) {
+                log.warn("No se puede recouperar bajas ya que el ID económico es no válido: {}", idEconomico);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+            Page<BajasLaboralesDTO> bajasLaborales = personalService.obtenerBajasLaboralesPorEconomico(idEconomico, pageable);
+            return ResponseEntity.status(HttpStatus.OK).body(bajasLaborales);
+        } catch (Exception e) {
+            log.error("Error al obtener las bajas laborales del personal: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Crear baja laboral", description = "Permite crear una nueva baja laboral para un personal específico.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Baja laboral creada correctamente"),
+            @ApiResponse(responseCode = "400", description = "Error al crear la baja laboral"),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor al crear la baja laboral")
+    })
+    @PostMapping("/baja-laboral")
+    public ResponseEntity<Void> crearBajaLaboral(@RequestBody CrearBajaLaboralDTO bajaLaboralDTO) {
+        log.info("Petición para crear una nueva baja laboral: {}", bajaLaboralDTO);
+        try {
+            if (bajaLaboralDTO.getIdPersona() <= 0) {
+                log.warn("Datos de baja laboral incompletos: {}", bajaLaboralDTO);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+            this.personalService.crearBajaLaboral(bajaLaboralDTO);
+            log.info("Baja laboral creada correctamente: {}", bajaLaboralDTO);
+            return ResponseEntity.status(HttpStatus.CREATED).build();
+        } catch (Exception e) {
+            log.error("Error al crear la baja laboral: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Eliminar baja laboral", description = "Permite eliminar una baja laboral por su ID.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Baja laboral eliminada correctamente"),
+            @ApiResponse(responseCode = "400", description = "Error al eliminar la baja laboral"),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor al eliminar la baja laboral")
+    })
+    @DeleteMapping("/baja-laboral/{idBajaLaboral}")
+    public ResponseEntity<Void> eliminarBajaLaboral(@PathVariable Long idBajaLaboral) {
+        log.info("Petición para eliminar la baja laboral con ID: {}", idBajaLaboral);
+        try {
+            if (idBajaLaboral <= 0) {
+                log.warn("ID de baja laboral no válido: {}", idBajaLaboral);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+            this.personalService.eliminarBajaLaboral(idBajaLaboral);
+            log.info("Baja laboral eliminada correctamente: {}", idBajaLaboral);
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        } catch (Exception e) {
+            log.error("Error al eliminar la baja laboral: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Actualizar baja laboral", description = "Permite actualizar una baja laboral por su ID.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Baja laboral actualizada correctamente"),
+            @ApiResponse(responseCode = "400", description = "Error al actualizar la baja laboral"),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor al actualizar la baja laboral")
+    })
+    @PutMapping("/baja-laboral")
+    public ResponseEntity<Void> actualizarBajaLaboral(@RequestBody ActualizarBajaLaboralDTO actualizarBajaLaboralDTO) {
+        log.info("Petición para actualizar la baja laboral con ID: {}", actualizarBajaLaboralDTO.getIdBajaLaboral());
+        try {
+            if (actualizarBajaLaboralDTO.getIdBajaLaboral() <= 0 || actualizarBajaLaboralDTO.getCampoActualizado() == null || actualizarBajaLaboralDTO.getValor() == null) {
+                log.warn("Datos de actualización de baja laboral incompletos: {}", actualizarBajaLaboralDTO);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+            this.personalService.actualizarBajaLaboral(actualizarBajaLaboralDTO);
+            log.info("Baja laboral actualizada correctamente: {}", actualizarBajaLaboralDTO.getIdBajaLaboral());
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        } catch (Exception e) {
+            log.error("Error al actualizar la baja laboral: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Obtener bonificaciones del personal", description = "Permite obtener las bonificaciones del personal de un economico por su ID.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Bonificaciones del personal obtenidas correctamente"),
+            @ApiResponse(responseCode = "404", description = "No se encontraron bonificaciones para el ID proporcionado"),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor al obtener las bonificaciones del personal")
+    })
+    @GetMapping("/{idEconomico}/bonificaciones")
+    public ResponseEntity<PageResponse<BonificacionesEmpleadoEconomicoDTO>> obtenerBonificacionesEmpleado(@PageableDefault(size = 20) Pageable pageable, @PathVariable Long idEconomico) {
+        log.info("Petición para obtener las bonificaciones del personal del economico con ID: {}", idEconomico);
+        try {
+            if (idEconomico <= 0) {
+                log.warn("ID económico no válido para obtener las bonificaciones: {}", idEconomico);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+            Page<BonificacionesEmpleadoEconomicoDTO> bonificaciones = personalService.obtenerBonificacionesEmpleadoPorEconomico(idEconomico, pageable);
+            PageResponse<BonificacionesEmpleadoEconomicoDTO> p = PageResponse.from(bonificaciones);
+            return ResponseEntity.status(HttpStatus.OK).body(p);
+        } catch (Exception e) {
+            log.error("Error al obtener las bonificaciones del personal: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

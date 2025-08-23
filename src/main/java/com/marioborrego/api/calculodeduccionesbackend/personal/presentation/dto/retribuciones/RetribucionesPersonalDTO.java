@@ -1,4 +1,4 @@
-package com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto;
+package com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.retribuciones;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
