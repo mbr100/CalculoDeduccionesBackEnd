@@ -2,7 +2,6 @@ package com.marioborrego.api.calculodeduccionesbackend.personal.presentation.con
 
 import com.marioborrego.api.calculodeduccionesbackend.configuration.DTO.PageResponse;
 import com.marioborrego.api.calculodeduccionesbackend.personal.business.interfaces.PersonalService;
-import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.*;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.ActualizarAltaEjercicioDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.AltaEjercicioDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bbcc.ActualizarBbccPersonalDTO;
@@ -11,8 +10,11 @@ import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bajasLaborales.BajasLaboralesDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bajasLaborales.CrearBajaLaboralDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bajasLaborales.ListadoPersonalSelectorEconomicoDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.ActualizarBonificacionDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.BonificacionesEmpleadoEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.ListarPersonalEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.PersonalEconomicoDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.resumenCostes.ResumenCostePersonalDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.retribuciones.ActualizarRetribucionDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.retribuciones.RetribucionesPersonalDTO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -400,4 +402,92 @@ public class PersonalController {
         }
     }
 
+    @Operation(summary = "Actualizar bonificación del personal", description = "Permite actualizar la bonificación de un personal específico dado el Id de Bonificación.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Bonificación del personal actualizada correctamente"),
+            @ApiResponse(responseCode = "400", description = "Error al actualizar la bonificación del personal"),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor al actualizar la bonificación del personal")
+    })
+    @PutMapping("/bonificacion")
+    public ResponseEntity<Void> actualizarBonificacionEmpleado(@RequestBody ActualizarBonificacionDTO actualizarBonificacionEmpleadoDTO) {
+        log.info("Petición para actualizar la bonificación con ID: {}", actualizarBonificacionEmpleadoDTO.getIdBonificacionTrabajador());
+        try {
+            if (actualizarBonificacionEmpleadoDTO.getIdBonificacionTrabajador() <= 0 || actualizarBonificacionEmpleadoDTO.getCampoActualizado() == null || actualizarBonificacionEmpleadoDTO.getValor() == null) {
+                log.warn("Datos de actualización de bonificación incompletos: {}", actualizarBonificacionEmpleadoDTO);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+            this.personalService.actualizarBonificacionEmpleado(actualizarBonificacionEmpleadoDTO);
+            log.info("Bonificación del personal actualizada correctamente: {}", actualizarBonificacionEmpleadoDTO.getIdBonificacionTrabajador());
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        } catch (Exception e) {
+            log.error("Error al actualizar la bonificación del personal: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Eliminar bonificación del personal", description = "Permite eliminar una bonificación del personal por su ID de bonificacion.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Bonificación del personal eliminada correctamente"),
+            @ApiResponse(responseCode = "400", description = "Error al eliminar la bonificación del personal"),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor al eliminar la bonificación del personal")
+    })
+    @DeleteMapping("/bonificacion/{idBonificacion}")
+    public ResponseEntity<Void> eliminarBonificacionEmpleado(@PathVariable Long idBonificacion) {
+        log.info("Petición para eliminar la bonificación del personal con ID bonificacion: {}", idBonificacion);
+        if (idBonificacion<= 0) {
+            log.warn("ID de bonificación no válido: {}", idBonificacion);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        try {
+            this.personalService.eliminarBonificacionEmpleado(idBonificacion);
+            log.info("Bonificación del personal eliminada correctamente: {}", idBonificacion);
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        } catch (Exception e) {
+            log.error("Error al eliminar la bonificación del personal: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Obtener resumen del coste de personal", description = "Permite obtener un resumen del coste de personal para un económico específico.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Resumen del coste de personal obtenido correctamente"),
+            @ApiResponse(responseCode = "400", description = "Error al obtener el resumen del coste de personal"),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor al obtener el resumen del coste de personal")
+    })
+    @GetMapping("/{idEconomico}/resumen-coste-personal")
+    public ResponseEntity<PageResponse<ResumenCostePersonalDTO>> obtenerResumenCostePersonal(@PageableDefault(size = 20) Pageable pageable, @PathVariable Long idEconomico) {
+        log.info("Petición para obtener el resumen del coste de personal del económico con ID: {}", idEconomico);
+        try {
+            if (idEconomico <= 0) {
+                log.warn("ID económico no válido para obtener el resumen del coste de personal: {}", idEconomico);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+            PageResponse<ResumenCostePersonalDTO> resumen = PageResponse.from(personalService.obtenerResumenCostePersonal(idEconomico,pageable));
+            return ResponseEntity.status(HttpStatus.OK).body(resumen);
+        } catch (Exception e) {
+            log.error("Error al obtener el resumen del coste de personal: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Actualizar resumen del coste de personal", description = "Permite actualizar el resumen del coste de personal para un económico específico.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Resumen del coste de personal actualizado correctamente"),
+            @ApiResponse(responseCode = "400", description = "Error al actualizar el resumen del coste de personal"),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor al actualizar el resumen del coste de personal")
+    })
+    @PutMapping("/{idEconomico}/actualizarCosteHoraPersonal")
+    public ResponseEntity<PageResponse<ResumenCostePersonalDTO>> actualizarResumenCosteHoraPersonal(@PageableDefault(size = 20) Pageable pageable, @PathVariable int idEconomico) {
+        try {
+            if (idEconomico <= 0) {
+                log.warn("ID económico no válido para actualizar el resumen del coste de personal: {}", idEconomico);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+            PageResponse<ResumenCostePersonalDTO> resumen = PageResponse.from(personalService.actualizarCosteHoraPersonal(idEconomico, pageable));
+            return ResponseEntity.status(HttpStatus.OK).body(resumen);
+        } catch (Exception e) {
+            log.error("Error al actualizar el resumen del coste de personal: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }

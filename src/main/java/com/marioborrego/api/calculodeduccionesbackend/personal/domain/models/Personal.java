@@ -53,4 +53,8 @@ public class Personal {
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "id_bonificaciones_trabajador")
     private BonificacionesTrabajador bonificacionesTrabajador;
+
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "id_coste_hora_personal")
+    private CosteHoraPersonal costeHoraPersonal;
 }

@@ -37,4 +37,12 @@ public class PorcentajeCotizacionEmpresa {
 
     @Column(nullable = false, precision = 5, scale = 2)
     private BigDecimal formacionProfesional;
+
+    public BigDecimal getPorcentajeCotizacionEmpresa() {
+        return contingenciasComunes
+                .add(accidentesTrabajo)
+                .add(desempleo)
+                .add(fogasa)
+                .add(formacionProfesional);
+    }
 }

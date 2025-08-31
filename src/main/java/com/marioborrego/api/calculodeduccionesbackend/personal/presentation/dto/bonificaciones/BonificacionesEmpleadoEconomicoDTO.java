@@ -1,4 +1,4 @@
-package com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto;
+package com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones;
 
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.enums.TiposBonificacion;
 import lombok.AllArgsConstructor;

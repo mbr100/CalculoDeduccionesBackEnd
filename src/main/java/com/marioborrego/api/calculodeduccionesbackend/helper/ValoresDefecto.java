@@ -2,9 +2,11 @@ package com.marioborrego.api.calculodeduccionesbackend.helper;
 
 import com.marioborrego.api.calculodeduccionesbackend.economico.domain.models.Economico;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.BasesCotizacion;
+import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.CosteHoraPersonal;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.HorasPersonal;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.Retribucion;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 
@@ -44,6 +46,15 @@ public class ValoresDefecto {
                 .fechaBajaEjercicio(LocalDate.of(economico.getAnualidad(), 12,31)) // 31 de diciembre del año actual
                 .horasConvenioAnual(economico.getHorasConvenio()) // Usar las horas del convenio de la empresa
                 .bajas(new ArrayList<>())
+                .build();
+    }
+
+    public static CosteHoraPersonal getCosteHoraPersonalDefault() {
+        return CosteHoraPersonal.builder()
+                .retribucionTotal(BigDecimal.valueOf(0.0))
+                .costeSS(BigDecimal.valueOf(0.0))
+                .horasMaximas(BigDecimal.valueOf(0.0))
+                .costeHora(BigDecimal.valueOf(0.0))
                 .build();
     }
 }

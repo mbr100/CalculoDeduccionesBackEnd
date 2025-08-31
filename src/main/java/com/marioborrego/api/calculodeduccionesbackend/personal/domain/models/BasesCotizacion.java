@@ -29,7 +29,7 @@ public class BasesCotizacion {
     private Long basesCotizacionContingenciasComunesDiciembre;
 
     @Transient
-    private Long getBasesCotizacionContingenciasComunesAnual() {
+    public Long getBasesCotizacionContingenciasComunesAnual() {
         return (basesCotizacionContingenciasComunesEnero != null ? basesCotizacionContingenciasComunesEnero : 0L)
                 + (basesCotizacionContingenciasComunesFebrero != null ? basesCotizacionContingenciasComunesFebrero : 0L)
                 + (basesCotizacionContingenciasComunesMarzo != null ? basesCotizacionContingenciasComunesMarzo : 0L)

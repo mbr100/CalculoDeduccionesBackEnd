@@ -1,6 +1,5 @@
 package com.marioborrego.api.calculodeduccionesbackend.personal.business.interfaces;
 
-import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.*;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.ActualizarAltaEjercicioDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.AltaEjercicioDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bbcc.ActualizarBbccPersonalDTO;
@@ -9,8 +8,11 @@ import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bajasLaborales.BajasLaboralesDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bajasLaborales.CrearBajaLaboralDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bajasLaborales.ListadoPersonalSelectorEconomicoDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.ActualizarBonificacionDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.BonificacionesEmpleadoEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.ListarPersonalEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.PersonalEconomicoDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.resumenCostes.ResumenCostePersonalDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.retribuciones.ActualizarRetribucionDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.retribuciones.RetribucionesPersonalDTO;
 import org.springframework.data.domain.Page;
@@ -35,4 +37,8 @@ public interface PersonalService {
     void eliminarBajaLaboral(Long idBajaLaboral);
     void actualizarBajaLaboral(ActualizarBajaLaboralDTO actualizarBajaLaboralDTO);
     Page<BonificacionesEmpleadoEconomicoDTO> obtenerBonificacionesEmpleadoPorEconomico(Long idEconomico, Pageable pageable);
+    void actualizarBonificacionEmpleado(ActualizarBonificacionDTO actualizarBonificacionEmpleadoDTO);
+    void eliminarBonificacionEmpleado(Long idBonificacion);
+    Page<ResumenCostePersonalDTO> obtenerResumenCostePersonal(Long idEconomico, Pageable pageable);
+    Page<ResumenCostePersonalDTO> actualizarCosteHoraPersonal(int idEconomico, Pageable pageable);
 }
