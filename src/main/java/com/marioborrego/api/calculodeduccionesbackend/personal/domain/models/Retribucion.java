@@ -13,7 +13,7 @@ import lombok.*;
 public class Retribucion {
     @Id
     @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
-    private int idRetribucion;
+    private Long idRetribucion;
 
     private Long importeRetribucionNoIT;
     private Long importeRetribucionExpecie;

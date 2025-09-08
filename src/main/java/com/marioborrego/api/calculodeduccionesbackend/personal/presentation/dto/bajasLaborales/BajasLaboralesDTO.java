@@ -12,7 +12,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 public class BajasLaboralesDTO {
-    private int idPersona;
+    private Long idPersona;
     private String nombre;
     private String dni;
     private Long idBajaLaboral;

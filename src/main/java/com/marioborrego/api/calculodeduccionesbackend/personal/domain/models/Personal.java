@@ -2,11 +2,14 @@ package com.marioborrego.api.calculodeduccionesbackend.personal.domain.models;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.marioborrego.api.calculodeduccionesbackend.economico.domain.models.Economico;
+import com.marioborrego.api.calculodeduccionesbackend.proyecto.domain.models.ProyectoPersonal;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Builder
 @Getter
@@ -18,7 +21,7 @@ public class Personal {
     @Id
     @Column(name = "id_personal", nullable = false, unique = true)
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int idPersona;
+    private Long idPersona;
     private String nombre;
     private String apellidos;
     private String dni;
@@ -57,4 +60,9 @@ public class Personal {
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "id_coste_hora_personal")
     private CosteHoraPersonal costeHoraPersonal;
+
+    @OneToMany(mappedBy = "personal", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @Builder.Default
+    private Set<ProyectoPersonal> proyectoPersonales = new HashSet<>();
+
 }

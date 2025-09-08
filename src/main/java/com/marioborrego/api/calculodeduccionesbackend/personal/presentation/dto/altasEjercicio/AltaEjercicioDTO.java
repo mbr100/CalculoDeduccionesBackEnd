@@ -11,7 +11,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 public class AltaEjercicioDTO {
-    private int idPersona;
+    private Long idPersona;
     private String nombre;
     private String dni;
     private Long idAltaEjercicio;

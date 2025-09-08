@@ -15,7 +15,7 @@ import java.math.BigDecimal;
 public class BonificacionesTrabajador {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int idBonificacionTrabajador;
+    private Long idBonificacionTrabajador;
 
     @Enumerated(value = EnumType.STRING)
     private TiposBonificacion tipoBonificacion;

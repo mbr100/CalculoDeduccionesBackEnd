@@ -13,10 +13,10 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class BonificacionesEmpleadoEconomicoDTO {
-    private int idPersona;
+    private Long idPersona;
     private String nombre;
     private String dni;
-    private int idBonificacionTrabajador;
+    private Long idBonificacionTrabajador;
     private TiposBonificacion tipoBonificacion;
     private BigDecimal porcentajeBonificacion;
 

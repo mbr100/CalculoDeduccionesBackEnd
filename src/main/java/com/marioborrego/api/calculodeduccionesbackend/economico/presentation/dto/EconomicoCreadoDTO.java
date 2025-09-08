@@ -10,5 +10,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class EconomicoCreadoDTO {
-    private int id;
+    private Long id;
 }

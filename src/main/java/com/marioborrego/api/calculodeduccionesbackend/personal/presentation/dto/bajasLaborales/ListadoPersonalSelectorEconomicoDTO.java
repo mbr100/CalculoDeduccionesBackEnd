@@ -10,6 +10,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class ListadoPersonalSelectorEconomicoDTO {
-    private int idPersona;
+    private Long idPersona;
     private String nombre;
 }

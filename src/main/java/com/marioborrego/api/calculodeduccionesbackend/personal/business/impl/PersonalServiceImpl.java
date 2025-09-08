@@ -7,6 +7,7 @@ import com.marioborrego.api.calculodeduccionesbackend.personal.business.interfac
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.*;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.enums.TiposBonificacion;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.repository.*;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.ActualizacionDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.ActualizarAltaEjercicioDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.AltaEjercicioDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bbcc.ActualizarBbccPersonalDTO;
@@ -20,8 +21,9 @@ import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.ListarPersonalEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.PersonalEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.resumenCostes.ResumenCostePersonalDTO;
-import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.retribuciones.ActualizarRetribucionDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.retribuciones.CamposRetribuciones;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.retribuciones.RetribucionesPersonalDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.exceptions.IDEconomicoException;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +37,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -83,19 +86,20 @@ public class PersonalServiceImpl implements PersonalService {
                     .titulacion4(personal.getTitulacion4())
                     .esPersonalInvestigador(personal.isEsPersonalInvestigador())
                     .build());
+        } else {
+            return Page.empty();
         }
-        return null;
     }
 
     @Override
     public PersonalEconomicoDTO crearPersonalEconomico(PersonalEconomicoDTO personalEconomicoDTO) {
         if (personalEconomicoDTO == null || personalEconomicoDTO.getIdEconomico() == 0) {
-            throw new IllegalArgumentException("El DTO de creación de personal económico no puede ser nulo y debe contener un ID económico.");
+            throw new IDEconomicoException("El DTO de creación de personal económico no puede ser nulo y debe contener un ID económico.");
         }
         if (personalEconomicoDTO.getIdPersona() != 0) {
             Optional<Personal> existingPersonal = personalRepository.findById(personalEconomicoDTO.getIdPersona());
             if (existingPersonal.isPresent()) {
-                throw new IllegalArgumentException("Ya existe un personal con el ID proporcionado.");
+                throw new IDEconomicoException("Ya existe un personal con el ID proporcionado.");
             }
         }
 
@@ -163,7 +167,7 @@ public class PersonalServiceImpl implements PersonalService {
     }
 
     @Override
-    public void eliminarPersonalEconomico(int id, Long economico) {
+    public void eliminarPersonalEconomico(Long id, Long economico) {
         if (id <= 0) {
             throw new IllegalArgumentException("El ID del personal económico a eliminar no puede ser nulo o menor o igual a cero.");
         }
@@ -172,7 +176,7 @@ public class PersonalServiceImpl implements PersonalService {
         }
         Optional<Personal> personal = personalRepository.findById(id);
         if (personal.isPresent()) {
-            if (personal.get().getEconomico().getIdEconomico() != (economico)) {
+            if (!Objects.equals(personal.get().getEconomico().getIdEconomico(), economico)) {
                 throw new IllegalArgumentException("El personal económico no pertenece al económico proporcionado.");
             }
             bonificacionesTrabajadorRepository.delete(personal.get().getBonificacionesTrabajador());
@@ -200,7 +204,7 @@ public class PersonalServiceImpl implements PersonalService {
         if (personal.isPresent()) {
             Economico economico = this.economicoRepository.findById(personalEconomicoDTO.getIdEconomico())
                     .orElseThrow(() -> new IllegalArgumentException("No existe un económico con el ID proporcionado."));
-            if (personal.get().getEconomico().getIdEconomico() != economico.getIdEconomico()) {
+            if (!Objects.equals(personal.get().getEconomico().getIdEconomico(), economico.getIdEconomico())) {
                 throw new IllegalArgumentException("El personal económico no pertenece al económico proporcionado.");
             }
             Personal updatedPersonal = getPersonal(personalEconomicoDTO, personal, economico);
@@ -280,29 +284,29 @@ public class PersonalServiceImpl implements PersonalService {
     }
 
     @Override
-    public void actualizarRetribucionPersonal(ActualizarRetribucionDTO actualizarRetribucionDTO) {
-        if (actualizarRetribucionDTO.getIdRetribucion() <= 0) {
+    public void actualizarRetribucionPersonal(ActualizacionDTO<Double, CamposRetribuciones> actualizarRetribucionDTO) {
+        if (actualizarRetribucionDTO.getId() <= 0) {
             throw new IllegalArgumentException("El ID de la retribución a actualizar no puede ser nulo o menor o igual a cero.");
         }
-        Retribucion retribucion = retribucionRepository.findById(actualizarRetribucionDTO.getIdRetribucion())
+        Retribucion retribucion = retribucionRepository.findById(actualizarRetribucionDTO.getId())
                 .orElseThrow(() -> new IllegalArgumentException("No existe una retribución con el ID proporcionado."));
 
         this.costeHoraService.calcularCosteHoraEconomico(retribucion.getPersonal().getEconomico());
 
         switch (actualizarRetribucionDTO.getCampoActualizado()) {
-            case "importeRetribucionNoIT":
+            case CamposRetribuciones.importeRetribucionNoIT:
                 retribucion.setImporteRetribucionNoIT(actualizarRetribucionDTO.getValor().longValue());
                 break;
-            case "importeRetribucionExpecie":
+            case CamposRetribuciones.importeRetribucionExpecie:
                 retribucion.setImporteRetribucionExpecie(actualizarRetribucionDTO.getValor().longValue());
                 break;
-            case "aportacionesPrevencionSocial":
+            case CamposRetribuciones.aportacionesPrevencionSocial:
                 retribucion.setAportaciones_prevencion_social(actualizarRetribucionDTO.getValor().longValue());
                 break;
-            case "dietasViajeExentas":
+            case CamposRetribuciones.dietasViajeExentas:
                 retribucion.setDietas_viaje_exentas(actualizarRetribucionDTO.getValor().longValue());
                 break;
-            case "rentasExentas190":
+            case CamposRetribuciones.rentasExentas190:
                 retribucion.setRentas_exentas_190(actualizarRetribucionDTO.getValor().longValue());
                 break;
             default:
@@ -447,7 +451,7 @@ public class PersonalServiceImpl implements PersonalService {
     }
 
     @Override
-    public List<ListadoPersonalSelectorEconomicoDTO> obtenerTodoPersonalSelectorEconomico(int idEconomico) {
+    public List<ListadoPersonalSelectorEconomicoDTO> obtenerTodoPersonalSelectorEconomico(Long idEconomico) {
         if (idEconomico <= 0) {
             throw new IllegalArgumentException("El ID del económico no puede ser nulo o menor o igual a cero.");
         }
@@ -627,13 +631,13 @@ public class PersonalServiceImpl implements PersonalService {
     }
 
     @Override
-    public Page<ResumenCostePersonalDTO> actualizarCosteHoraPersonal(int idEconomico, Pageable pageable) {
+    public Page<ResumenCostePersonalDTO> actualizarCosteHoraPersonal(Long idEconomico, Pageable pageable) {
         if (idEconomico <= 0) {
             throw new IllegalArgumentException("El ID del económico no puede ser nulo o menor o igual a cero.");
         }
         Economico economico = this.economicoRepository.findById(idEconomico).orElseThrow(() -> new IllegalArgumentException("No existe un económico con el ID proporcionado."));
         this.costeHoraService.calcularCosteHoraEconomico(economico);
-        Page<Personal> personalList = personalRepository.findPersonalByeconomicoId((long) idEconomico, pageable);
+        Page<Personal> personalList = personalRepository.findPersonalByeconomicoId(idEconomico, pageable);
         return getResumenCostePersonalDTOS(personalList);
     }
 

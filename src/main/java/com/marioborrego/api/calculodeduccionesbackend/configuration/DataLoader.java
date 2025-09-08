@@ -42,8 +42,8 @@
 //                economico.setHorasConvenio(1600L);
 //                economico.setUrllogo("https://example.com/logo1.png");
 //                economico.setUrlWeb("https://empresa-alpha.com");
-//                economico.setCNAE(6201);
-//                economico.setAnualidad(2024);
+//                economico.setCNAE(6201L);
+//                economico.setAnualidad(2024L);
 //                economico.setEsPyme(true);
 //                economico.setActivo(true);
 //

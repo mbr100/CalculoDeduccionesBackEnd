@@ -2,6 +2,7 @@ package com.marioborrego.api.calculodeduccionesbackend.personal.presentation.con
 
 import com.marioborrego.api.calculodeduccionesbackend.configuration.DTO.PageResponse;
 import com.marioborrego.api.calculodeduccionesbackend.personal.business.interfaces.PersonalService;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.ActualizacionDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.ActualizarAltaEjercicioDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.AltaEjercicioDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bbcc.ActualizarBbccPersonalDTO;
@@ -15,8 +16,9 @@ import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.ListarPersonalEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.PersonalEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.resumenCostes.ResumenCostePersonalDTO;
-import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.retribuciones.ActualizarRetribucionDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.retribuciones.CamposRetribuciones;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.retribuciones.RetribucionesPersonalDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.exceptions.IDEconomicoException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -51,7 +53,9 @@ public class PersonalController {
     })
     @GetMapping("/economico/{idEconomico}")
     public ResponseEntity<Page<ListarPersonalEconomicoDTO>> listadoPersonalEconomico(@PageableDefault(size = 20, sort = "nombre", direction = Sort.Direction.ASC) Pageable pageable, @PathVariable Long idEconomico) {
-
+        if (idEconomico<= 0) {
+            throw new IDEconomicoException("El ID económico no es válido: " + idEconomico);
+        }
         log.info("Petición para obtener el listado de personal económico: {}", idEconomico);
         try {
             Page<ListarPersonalEconomicoDTO> listado = personalService.obtenerTodoPersonalEconomico(idEconomico, pageable);
@@ -77,8 +81,11 @@ public class PersonalController {
             @ApiResponse(responseCode = "500", description = "Error al obtener el listado de personal económico selector")
     })
     @GetMapping("/selector/{idEconomico}")
-    public ResponseEntity<List<ListadoPersonalSelectorEconomicoDTO>> listadoPersonalEconomicoSelector(@PathVariable int idEconomico) {
+    public ResponseEntity<List<ListadoPersonalSelectorEconomicoDTO>> listadoPersonalEconomicoSelector(@PathVariable Long idEconomico) {
         log.info("Petición para obtener el listado de personal económico selector: {}", idEconomico);
+        if (idEconomico<= 0) {
+            throw new IDEconomicoException("El ID económico no es válido: " + idEconomico);
+        }
         try {
             List<ListadoPersonalSelectorEconomicoDTO> listado = personalService.obtenerTodoPersonalSelectorEconomico(idEconomico);
             if (listado == null) {
@@ -102,6 +109,7 @@ public class PersonalController {
     @PostMapping("/economico/crear")
     public ResponseEntity<PersonalEconomicoDTO> crearPersonalEconomico(@RequestBody PersonalEconomicoDTO personalEconomicoDTO) {
         log.info("Petición para crear un nuevo personal económico: {}", personalEconomicoDTO);
+
         try {
             PersonalEconomicoDTO c = this.personalService.crearPersonalEconomico(personalEconomicoDTO);
             log.info("Personal económico creado correctamente: {}", personalEconomicoDTO);
@@ -119,11 +127,14 @@ public class PersonalController {
             @ApiResponse(responseCode = "400", description = "Error al eliminar el personal económico"),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor al eliminar el personal económico")
     })
-    @DeleteMapping("/{economico}/{id}")
-    public ResponseEntity<Void> eliminarPersonalEconomico(@PathVariable int id, @PathVariable Long economico) {
+    @DeleteMapping("/{idEconomico}/{id}")
+    public ResponseEntity<Void> eliminarPersonalEconomico(@PathVariable Long id, @PathVariable Long idEconomico) {
+        if (idEconomico<= 0 || id <= 0) {
+            throw new IDEconomicoException("El ID económico no es válido: " + idEconomico);
+        }
         log.info("Petición para eliminar el personal económico con ID: {}", id);
         try {
-            this.personalService.eliminarPersonalEconomico(id, economico);
+            this.personalService.eliminarPersonalEconomico(id, idEconomico);
             log.info("Personal económico eliminado correctamente: {}", id);
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (Exception e) {
@@ -140,6 +151,9 @@ public class PersonalController {
     })
     @PutMapping("/actualizar")
     public ResponseEntity<Void> actualizarPersonal(@RequestBody PersonalEconomicoDTO personalEconomicoDTO) {
+        if (personalEconomicoDTO.getIdPersona()<0 || personalEconomicoDTO.getIdEconomico()<= 0) {
+            throw new IDEconomicoException("El ID económico no es válido: " + personalEconomicoDTO.getIdEconomico());
+        }
         log.info("Petición para actualizar el personal económico con ID: {}", personalEconomicoDTO.getIdPersona());
         try {
             this.personalService.actualizarPersonalEconomico(personalEconomicoDTO);
@@ -159,7 +173,9 @@ public class PersonalController {
     })
     @GetMapping("/{idEconomico}/retribuciones")
     public ResponseEntity<Page<RetribucionesPersonalDTO>> obtenerRetribucionesPersonal(@PageableDefault(size = 20, sort = "nombre", direction = Sort.Direction.ASC) Pageable pageable, @PathVariable Long idEconomico) {
-        log.info("Petición para obtener las retribuciones del personal del economico con ID: {}", idEconomico);
+        if (idEconomico<0){
+            throw new IDEconomicoException("El ID económico no es válido: " + idEconomico);
+        }
         try {
             if (idEconomico<= 0) {
                 log.warn("ID económico no válido para retribuciones: {}", idEconomico);
@@ -181,6 +197,9 @@ public class PersonalController {
     })
     @GetMapping("/{idEconomico}/cotizaciones")
     public ResponseEntity<Page<BbccPersonalDTO>> obtenerCotizacionesPersonal(@PageableDefault(size = 20, sort = "nombre", direction = Sort.Direction.ASC) Pageable pageable, @PathVariable Long idEconomico) {
+        if (idEconomico<0){
+            throw new IDEconomicoException("El ID económico no es válido: " + idEconomico);
+        }
         log.info("Petición para obtener las cotizaciones del personal del economico con ID: {}", idEconomico);
         try {
             if (idEconomico <= 0) {
@@ -202,15 +221,15 @@ public class PersonalController {
             @ApiResponse(responseCode = "500", description = "Error interno del servidor al actualizar la retribución del personal")
     })
     @PutMapping("/retribucion")
-    public ResponseEntity<Void> actualizarRetribucionPersonal(@RequestBody ActualizarRetribucionDTO actualizarRetribucionDTO) {
-        log.info("Petición para actualizar la retribución con ID: {}", actualizarRetribucionDTO.getIdRetribucion());
+    public ResponseEntity<Void> actualizarRetribucionPersonal(@RequestBody ActualizacionDTO<Double, CamposRetribuciones> actualizarRetribucionDTO) {
+        log.info("Petición para actualizar la retribución con ID: {}", actualizarRetribucionDTO.getId());
         try {
-            if (actualizarRetribucionDTO.getIdRetribucion() == 0 || actualizarRetribucionDTO.getCampoActualizado() == null || actualizarRetribucionDTO.getValor() == null) {
+            if (actualizarRetribucionDTO.getId() == 0 || actualizarRetribucionDTO.getCampoActualizado() == null || actualizarRetribucionDTO.getValor() == null) {
                 log.warn("Datos de actualización retribucion personal incompletos: {}", actualizarRetribucionDTO);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
             }
             this.personalService.actualizarRetribucionPersonal(actualizarRetribucionDTO);
-            log.info("Retribución del personal eliminada correctamente: {}", actualizarRetribucionDTO.getIdRetribucion());
+            log.info("Retribución del personal eliminada correctamente: {}", actualizarRetribucionDTO.getId());
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (Exception e) {
             log.error("Error al eliminar la retribución del personal: {}", e.getMessage());
@@ -250,6 +269,9 @@ public class PersonalController {
     @GetMapping("/{idEconomico}/alta-ejercicio")
     public ResponseEntity<Page<AltaEjercicioDTO>> listadoDePersonalAltaEjercicio(@PageableDefault(size = 20) Pageable pageable, @PathVariable Long idEconomico) {
         log.info("Petición para obtener el listado de alta de personal económico: {}", idEconomico);
+        if (idEconomico<0){
+            throw new IDEconomicoException("El ID económico no es válido: " + idEconomico);
+        }
         try {
             Page<AltaEjercicioDTO> listado = personalService.obtenerTodoPersonalAltaEjercicio(idEconomico, pageable);
             if (listado == null || listado.isEmpty()) {
@@ -297,6 +319,9 @@ public class PersonalController {
     @GetMapping("/{idEconomico}/bajas-laborales")
     public ResponseEntity<Page<BajasLaboralesDTO>> obtenerBajasLaborales(@PageableDefault(size = 20, sort = "fechaInicio", direction = Sort.Direction.DESC) Pageable pageable, @PathVariable Long idEconomico) {
         log.info("Petición para obtener las bajas laborales del personal del económico con ID: {}", idEconomico);
+        if (idEconomico<0){
+            throw new IDEconomicoException("El ID económico no es válido: " + idEconomico);
+        }
         try {
             if (idEconomico <= 0) {
                 log.warn("No se puede recouperar bajas ya que el ID económico es no válido: {}", idEconomico);
@@ -342,6 +367,9 @@ public class PersonalController {
     @DeleteMapping("/baja-laboral/{idBajaLaboral}")
     public ResponseEntity<Void> eliminarBajaLaboral(@PathVariable Long idBajaLaboral) {
         log.info("Petición para eliminar la baja laboral con ID: {}", idBajaLaboral);
+        if (idBajaLaboral<0){
+            throw new IDEconomicoException("El ID económico no es válido: " + idBajaLaboral);
+        }
         try {
             if (idBajaLaboral <= 0) {
                 log.warn("ID de baja laboral no válido: {}", idBajaLaboral);
@@ -388,6 +416,9 @@ public class PersonalController {
     @GetMapping("/{idEconomico}/bonificaciones")
     public ResponseEntity<PageResponse<BonificacionesEmpleadoEconomicoDTO>> obtenerBonificacionesEmpleado(@PageableDefault(size = 20) Pageable pageable, @PathVariable Long idEconomico) {
         log.info("Petición para obtener las bonificaciones del personal del economico con ID: {}", idEconomico);
+       if (idEconomico<0){
+            throw new IDEconomicoException("El ID económico no es válido: " + idEconomico);
+        }
         try {
             if (idEconomico <= 0) {
                 log.warn("ID económico no válido para obtener las bonificaciones: {}", idEconomico);
@@ -434,6 +465,9 @@ public class PersonalController {
     @DeleteMapping("/bonificacion/{idBonificacion}")
     public ResponseEntity<Void> eliminarBonificacionEmpleado(@PathVariable Long idBonificacion) {
         log.info("Petición para eliminar la bonificación del personal con ID bonificacion: {}", idBonificacion);
+        if (idBonificacion<0){
+            throw new IDEconomicoException("El ID económico no es válido: " + idBonificacion);
+        }
         if (idBonificacion<= 0) {
             log.warn("ID de bonificación no válido: {}", idBonificacion);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -457,6 +491,9 @@ public class PersonalController {
     @GetMapping("/{idEconomico}/resumen-coste-personal")
     public ResponseEntity<PageResponse<ResumenCostePersonalDTO>> obtenerResumenCostePersonal(@PageableDefault(size = 20) Pageable pageable, @PathVariable Long idEconomico) {
         log.info("Petición para obtener el resumen del coste de personal del económico con ID: {}", idEconomico);
+        if (idEconomico<0){
+            throw new IDEconomicoException("El ID económico no es válido: " + idEconomico);
+        }
         try {
             if (idEconomico <= 0) {
                 log.warn("ID económico no válido para obtener el resumen del coste de personal: {}", idEconomico);
@@ -477,11 +514,11 @@ public class PersonalController {
             @ApiResponse(responseCode = "500", description = "Error interno del servidor al actualizar el resumen del coste de personal")
     })
     @PutMapping("/{idEconomico}/actualizarCosteHoraPersonal")
-    public ResponseEntity<PageResponse<ResumenCostePersonalDTO>> actualizarResumenCosteHoraPersonal(@PageableDefault(size = 20) Pageable pageable, @PathVariable int idEconomico) {
+    public ResponseEntity<PageResponse<ResumenCostePersonalDTO>> actualizarResumenCosteHoraPersonal(@PageableDefault(size = 20) Pageable pageable, @PathVariable Long idEconomico) {
         try {
             if (idEconomico <= 0) {
                 log.warn("ID económico no válido para actualizar el resumen del coste de personal: {}", idEconomico);
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+                throw new IDEconomicoException("El ID económico no es válido: " + idEconomico);
             }
             PageResponse<ResumenCostePersonalDTO> resumen = PageResponse.from(personalService.actualizarCosteHoraPersonal(idEconomico, pageable));
             return ResponseEntity.status(HttpStatus.OK).body(resumen);

@@ -1,11 +1,14 @@
 package com.marioborrego.api.calculodeduccionesbackend.economico.domain.models;
 
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.Personal;
+import com.marioborrego.api.calculodeduccionesbackend.proyecto.domain.models.Proyecto;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Builder
 @Getter @Setter
@@ -16,7 +19,7 @@ public class Economico {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_economico", nullable = false, unique = true)
-    private int idEconomico;
+    private Long idEconomico;
     private String nombre;
     private String cif;
     private String direccion;
@@ -26,8 +29,8 @@ public class Economico {
     private Long horasConvenio;
     private String urllogo;
     private String urlWeb;
-    private int CNAE;
-    private int anualidad;
+    private Long CNAE;
+    private Long anualidad;
     private boolean esPyme;
     private boolean activo;
 
@@ -38,5 +41,11 @@ public class Economico {
     private String descripcionIDI;
 
     @OneToMany(mappedBy = "economico", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<Personal> personal = new ArrayList<>();
+
+
+    @OneToMany(mappedBy = "economico", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private Set<Proyecto> proyectos = new HashSet<>();
 }

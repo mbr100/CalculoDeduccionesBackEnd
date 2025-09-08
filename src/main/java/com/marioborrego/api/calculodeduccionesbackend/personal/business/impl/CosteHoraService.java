@@ -34,21 +34,21 @@ public class CosteHoraService {
 
     public void calcularCosteHoraEconomico(Economico economico) {
         logger.info("Iniciando cálculo del coste por hora para el económico con ID: {}", economico.getIdEconomico());
-        economico.getPersonal().forEach(personal -> this.calcularCosteHoraPersonal(personal, economico.getCNAE()));
+        economico.getPersonal().forEach(personal -> this.calcularCosteHoraPersonal(personal, Math.toIntExact(economico.getCNAE())));
     }
 
     private void calcularCosteHoraPersonal(Personal personal, int cnae) {
         CosteHoraPersonal  ch= personal.getCosteHoraPersonal();
         BigDecimal retribucionAnual = BigDecimal.valueOf(retribucionRepository.findById(personal.getIdPersona()).orElseThrow(() -> new RuntimeException("No se encontró la retribución para el personal con ID: " + personal.getIdPersona())).getPercepcionesSalariales());
         ch.setRetribucionTotal(retribucionAnual);
-        BigDecimal horasAnuales = BigDecimal.valueOf(horasEmpleadoRepository.findById((long) personal.getIdPersona()).orElseThrow(() -> new RuntimeException("No se encontraron las horas para el personal con ID: " + personal.getIdPersona())).getHorasMaximasAnuales());
+        BigDecimal horasAnuales = BigDecimal.valueOf(horasEmpleadoRepository.findById(personal.getIdPersona()).orElseThrow(() -> new RuntimeException("No se encontraron las horas para el personal con ID: " + personal.getIdPersona())).getHorasMaximasAnuales());
         ch.setHorasMaximas(horasAnuales);
         BigDecimal SSAnual = BigDecimal.valueOf(basesCotizacionRepository.findById(personal.getIdPersona()).orElseThrow(() -> new RuntimeException("No se encontró la base de cotización para el personal con ID: " + personal.getIdPersona())).getBasesCotizacionContingenciasComunesAnual());
         BigDecimal porcentajeSS = porcentajeCotizacionEmpresaRepository.findbyCNAE(cnae).orElseThrow(() -> new RuntimeException("No se encontró el porcentaje de cotización para el CNAE: " + cnae)).getPorcentajeCotizacionEmpresa();
         BigDecimal porcentajeDecimal = porcentajeSS.divide(BigDecimal.valueOf(100), RoundingMode.HALF_UP);
         logger.info("Porcentaje de cotización a la Seguridad Social para el personal con ID {}: {}%", personal.getIdPersona(), porcentajeDecimal);
         if (personal.getBonificacionesTrabajador()!=null){
-            long porcentajeBonificacion = bonificacionesTrabajadorRepository.findById((long) personal.getIdPersona()).orElseThrow(() -> new RuntimeException("No se encontró la bonificación para el personal con ID: " + personal.getIdPersona())).getPorcentajeBonificacion().longValue();
+            long porcentajeBonificacion = bonificacionesTrabajadorRepository.findById(personal.getIdPersona()).orElseThrow(() -> new RuntimeException("No se encontró la bonificación para el personal con ID: " + personal.getIdPersona())).getPorcentajeBonificacion().longValue();
             BigDecimal descuentoBonificacion = BigDecimal.valueOf(porcentajeBonificacion/100);
             BigDecimal SSAntesDeDescuentos = SSAnual.multiply(porcentajeDecimal);
             BigDecimal contigenciasComunes = porcentajeCotizacionEmpresaRepository.findbyCNAE(cnae).orElseThrow(() -> new RuntimeException("No se encontró el porcentaje de cotización para el CNAE: " + cnae)).getContingenciasComunes();

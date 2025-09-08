@@ -41,9 +41,9 @@ public class ValoresDefecto {
 
     public static HorasPersonal getHorasPersonalDefault(Economico economico) {
         return HorasPersonal.builder()
-                .ejercicio(economico.getAnualidad()) // Año actual
-                .fechaAltaEjercicio(LocalDate.of(economico.getAnualidad(), 1,1)) // 1 de enero del año actual
-                .fechaBajaEjercicio(LocalDate.of(economico.getAnualidad(), 12,31)) // 31 de diciembre del año actual
+                .ejercicio(Math.toIntExact(economico.getAnualidad())) // Año actual
+                .fechaAltaEjercicio(LocalDate.of(Math.toIntExact(economico.getAnualidad()), 1,1)) // 1 de enero del año actual
+                .fechaBajaEjercicio(LocalDate.of(Math.toIntExact(economico.getAnualidad()), 12,31)) // 31 de diciembre del año actual
                 .horasConvenioAnual(economico.getHorasConvenio()) // Usar las horas del convenio de la empresa
                 .bajas(new ArrayList<>())
                 .build();

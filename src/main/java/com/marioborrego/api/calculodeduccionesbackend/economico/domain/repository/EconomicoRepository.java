@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
-public interface EconomicoRepository extends JpaRepository<Economico, Integer> {
+public interface EconomicoRepository extends JpaRepository<Economico, Long> {
     @Query("SELECT e FROM empresa_economico e WHERE e.activo = true")
     List<Economico> findAllActivos();
 
@@ -18,5 +18,5 @@ public interface EconomicoRepository extends JpaRepository<Economico, Integer> {
     @Query("SELECT e FROM empresa_economico e WHERE e.cif = ?1 AND e.anualidad = ?2 AND e.activo = true")
     List<Economico> comprobarExistencia(String cif, Integer anualidad);
 
-    List<Economico> findByCifAndAnualidadAndActivoTrue(String cif, Integer anualidad);
+    List<Economico> findByCifAndAnualidadAndActivoTrue(String cif, Long anualidad);
 }

@@ -10,11 +10,11 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface PersonalRepository extends JpaRepository<Personal, Integer> {
+public interface PersonalRepository extends JpaRepository<Personal, Long> {
 
     @Query("SELECT p FROM Personal p WHERE p.economico.idEconomico = ?1")
     Page<Personal> findPersonalByeconomicoId(Long idEconomico, Pageable pageable);
 
     @Query("SELECT p FROM Personal p WHERE p.economico.idEconomico = ?1")
-    List<Personal> findByEconomicoId(int idEconomico);
+    List<Personal> findByEconomicoId(Long idEconomico);
 }

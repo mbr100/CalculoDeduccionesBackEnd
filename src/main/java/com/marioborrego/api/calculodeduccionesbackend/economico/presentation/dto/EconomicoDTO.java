@@ -2,14 +2,13 @@ package com.marioborrego.api.calculodeduccionesbackend.economico.presentation.dt
 
 import lombok.*;
 
-import java.io.Serializable;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 public class EconomicoDTO{
-    int id;
+    Long id;
     String nombre;
     String cif;
     String direccion;
@@ -19,8 +18,8 @@ public class EconomicoDTO{
     Long horasConvenio;
     String urllogo;
     String urlWeb;
-    int cnae;
-    int anualidad;
+    Long cnae;
+    Long anualidad;
     boolean esPyme;
     String presentacionEmpresa;
     String descripcionIDI;

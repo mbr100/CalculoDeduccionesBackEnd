@@ -73,7 +73,7 @@ public class BajaLaboral {
             return;
         }
 
-        long diasAnualidad = Year.of(personal.getEconomico().getAnualidad()).isLeap() ? 366 : 365;
+        long diasAnualidad = Year.of(Math.toIntExact(personal.getEconomico().getAnualidad())).isLeap() ? 366 : 365;
         System.out.println("Días anualidad: " + diasAnualidad);
 
         if (fechaInicio == null || fechaFin == null) {
@@ -84,12 +84,6 @@ public class BajaLaboral {
 
         if (fechaInicio.isAfter(fechaFin)) {
             System.out.println("ERROR: Fecha inicio posterior a fecha fin");
-            this.horasDeBaja = 0L;
-            return;
-        }
-
-        if (diasAnualidad <= 0) {
-            System.out.println("ERROR: Días anualidad inválido: " + diasAnualidad);
             this.horasDeBaja = 0L;
             return;
         }
@@ -119,27 +113,10 @@ public class BajaLaboral {
         System.out.println("--- Fin cálculo de horas de baja ---");
     }
 
-    /**
-     * Metodo público para calcular las horas manualmente (útil para testing)
-     */
     public void recalcularHorasDeBaja() {
         calcularHorasDeBaja();
     }
 
-    /**
-     * Metodo para obtener información de debug
-     */
-    public String getDebugInfo() {
-        return String.format(
-                "BajaLaboral{id=%d, fechaInicio=%s, fechaFin=%s, horasDeBaja=%d, " +
-                        "personal=%s, horasPersonal=%s, economico=%s}",
-                id, fechaInicio, fechaFin, horasDeBaja,
-                personal != null ? personal.getIdPersona() : "null",
-                horasPersonal != null ? horasPersonal.getId() : "null",
-                personal != null && personal.getEconomico() != null ?
-                        personal.getEconomico().getAnualidad() : "null"
-        );
-    }
 
     @Override
     public String toString() {

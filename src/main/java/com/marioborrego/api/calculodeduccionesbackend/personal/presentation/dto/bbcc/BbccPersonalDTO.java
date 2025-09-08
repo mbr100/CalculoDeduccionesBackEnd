@@ -10,10 +10,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class BbccPersonalDTO {
-    private int idPersonal;
+    private Long idPersonal;
     private String nombre;
     private String dni;
-    private int id_baseCotizacion;
+    private Long id_baseCotizacion;
     private Long basesCotizacionContingenciasComunesEnero;
     private Long basesCotizacionContingenciasComunesFebrero;
     private Long basesCotizacionContingenciasComunesMarzo;

@@ -9,7 +9,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 public class CrearBajaLaboralDTO {
-    private int idPersona;
+    private Long idPersona;
     private LocalDate fechaInicio;
     private LocalDate fechaFin;
 }

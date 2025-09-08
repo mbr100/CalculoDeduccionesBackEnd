@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class ActualizarBbccPersonalDTO {
-    private int idBbccPersonal;
+    private Long idBbccPersonal;
     private String campoActualizado;
     private Double valor;
 }

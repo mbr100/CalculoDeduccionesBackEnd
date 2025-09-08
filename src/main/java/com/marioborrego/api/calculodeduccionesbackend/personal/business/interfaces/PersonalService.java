@@ -1,5 +1,6 @@
 package com.marioborrego.api.calculodeduccionesbackend.personal.business.interfaces;
 
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.ActualizacionDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.ActualizarAltaEjercicioDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.AltaEjercicioDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bbcc.ActualizarBbccPersonalDTO;
@@ -13,7 +14,7 @@ import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.ListarPersonalEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.PersonalEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.resumenCostes.ResumenCostePersonalDTO;
-import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.retribuciones.ActualizarRetribucionDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.retribuciones.CamposRetribuciones;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.retribuciones.RetribucionesPersonalDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,16 +24,16 @@ import java.util.List;
 public interface PersonalService {
     Page<ListarPersonalEconomicoDTO> obtenerTodoPersonalEconomico(Long idEconomico, Pageable pageable);
     PersonalEconomicoDTO crearPersonalEconomico(PersonalEconomicoDTO personalEconomicoDTO);
-    void eliminarPersonalEconomico(int id, Long economico);
+    void eliminarPersonalEconomico(Long id, Long economico);
     void actualizarPersonalEconomico(PersonalEconomicoDTO personalEconomicoDTO);
     Page<RetribucionesPersonalDTO> obtenerRetribucionesPersonalPorEconomico(Long idEconomico, Pageable pageable);
     Page<BbccPersonalDTO> obtenerCotizacionesPersonalPorEconomico(Long idEconomico, Pageable pageable);
-    void actualizarRetribucionPersonal(ActualizarRetribucionDTO actualizarRetribucionDTO);
+    void actualizarRetribucionPersonal(ActualizacionDTO<Double, CamposRetribuciones> actualizarRetribucionDTO);
     void actualizarBbccPersonal(ActualizarBbccPersonalDTO actualizarBbccPersonalDTO);
     Page<AltaEjercicioDTO> obtenerTodoPersonalAltaEjercicio(Long idEconomico, Pageable pageable);
     void actualizarAltaEjercicio(ActualizarAltaEjercicioDTO actualizarAltaEjercicioDTO);
     Page<BajasLaboralesDTO> obtenerBajasLaboralesPorEconomico(Long idEconomico, Pageable pageable);
-    List<ListadoPersonalSelectorEconomicoDTO> obtenerTodoPersonalSelectorEconomico(int idEconomico);
+    List<ListadoPersonalSelectorEconomicoDTO> obtenerTodoPersonalSelectorEconomico(Long idEconomico);
     void crearBajaLaboral(CrearBajaLaboralDTO bajaLaboralDTO);
     void eliminarBajaLaboral(Long idBajaLaboral);
     void actualizarBajaLaboral(ActualizarBajaLaboralDTO actualizarBajaLaboralDTO);
@@ -40,5 +41,5 @@ public interface PersonalService {
     void actualizarBonificacionEmpleado(ActualizarBonificacionDTO actualizarBonificacionEmpleadoDTO);
     void eliminarBonificacionEmpleado(Long idBonificacion);
     Page<ResumenCostePersonalDTO> obtenerResumenCostePersonal(Long idEconomico, Pageable pageable);
-    Page<ResumenCostePersonalDTO> actualizarCosteHoraPersonal(int idEconomico, Pageable pageable);
+    Page<ResumenCostePersonalDTO> actualizarCosteHoraPersonal(Long idEconomico, Pageable pageable);
 }

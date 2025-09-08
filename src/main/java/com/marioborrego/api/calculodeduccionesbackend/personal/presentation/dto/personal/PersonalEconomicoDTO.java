@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class PersonalEconomicoDTO {
-    private int idPersona;
+    private Long idPersona;
     private String nombre;
     private String apellidos;
     private String dni;
@@ -21,5 +21,5 @@ public class PersonalEconomicoDTO {
     private String titulacion3;
     private String titulacion4;
     private boolean esPersonalInvestigador;
-    private int idEconomico;
+    private Long idEconomico;
 }

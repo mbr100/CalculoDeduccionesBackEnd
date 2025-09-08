@@ -13,7 +13,7 @@ public class BasesCotizacion {
 
     @Id
     @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
-    private int id_baseCotizacion;
+    private Long id_baseCotizacion;
 
     private Long basesCotizacionContingenciasComunesEnero;
     private Long basesCotizacionContingenciasComunesFebrero;

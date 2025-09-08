@@ -8,7 +8,7 @@ import java.io.Serializable;
 @Value
 @Builder
 public class EconomicoListadoGeneralDto implements Serializable {
-    int id;
+    Long id;
     String nombre;
     String cif;
     int CNAE;

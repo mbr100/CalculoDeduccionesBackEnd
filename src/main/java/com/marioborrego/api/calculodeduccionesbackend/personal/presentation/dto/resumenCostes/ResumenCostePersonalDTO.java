@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class ResumenCostePersonalDTO {
-    private int idPersonal;
+    private Long idPersonal;
     private String nombre;
     private String dni;
     private Long idCosteHoraPersonal;

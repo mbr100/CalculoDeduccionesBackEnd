@@ -42,8 +42,8 @@ public class EconomicoServiceImpl implements EconomicoService {
                     .id(empresa.getIdEconomico())
                     .nombre(empresa.getNombre())
                     .cif(empresa.getCif())
-                    .CNAE(empresa.getCNAE())
-                    .anualidad(empresa.getAnualidad())
+                    .CNAE(Math.toIntExact(empresa.getCNAE()))
+                    .anualidad(Math.toIntExact(empresa.getAnualidad()))
                     .esPyme(empresa.isEsPyme())
                     .build()
             );
@@ -53,7 +53,7 @@ public class EconomicoServiceImpl implements EconomicoService {
     }
 
     @Override
-    public boolean comprobarExistenciaEconomico(String cif, Integer anualidad) {
+    public boolean comprobarExistenciaEconomico(String cif, Long anualidad) {
         try {
             List<Economico> economicos = economicoRepository.findByCifAndAnualidadAndActivoTrue(cif, anualidad);
             return !economicos.isEmpty();
@@ -76,8 +76,8 @@ public class EconomicoServiceImpl implements EconomicoService {
                     .horasConvenio(Long.valueOf(crearEconomicoDTO.getHorasConvenio()))
                     .urllogo(crearEconomicoDTO.getUrllogo())
                     .urlWeb(crearEconomicoDTO.getUrlWeb())
-                    .CNAE(crearEconomicoDTO.getCnae())
-                    .anualidad(crearEconomicoDTO.getAnualidad())
+                    .CNAE(Long.valueOf(crearEconomicoDTO.getCnae()))
+                    .anualidad((long) crearEconomicoDTO.getAnualidad())
                     .esPyme(crearEconomicoDTO.getEsPyme())
                     .activo(true)
                     .build();
@@ -93,7 +93,7 @@ public class EconomicoServiceImpl implements EconomicoService {
     @Override
     public EconomicoDTO obtenerEconomico(Long idEconomico) {
         try {
-            Economico economico = economicoRepository.findById(Math.toIntExact(idEconomico)).orElseThrow(() -> new RuntimeException("Económico no encontrado con ID: " + idEconomico));
+            Economico economico = economicoRepository.findById(idEconomico).orElseThrow(() -> new RuntimeException("Económico no encontrado con ID: " + idEconomico));
             return EconomicoDTO.builder()
                     .id(economico.getIdEconomico())
                     .nombre(economico.getNombre())
@@ -119,7 +119,7 @@ public class EconomicoServiceImpl implements EconomicoService {
     @Override
     public void actualizarDatosEconomico(ActualizarDatosEconomicoDTO economico) {
         try {
-            Economico economicoEntity = economicoRepository.findById(Math.toIntExact(economico.getId()))
+            Economico economicoEntity = economicoRepository.findById(economico.getId())
                     .orElseThrow(() -> new RuntimeException("Económico no encontrado con ID: " + economico.getId()));
             economicoEntity.setNombre(economico.getNombre());
             economicoEntity.setDireccion(economico.getDireccion());
@@ -129,7 +129,7 @@ public class EconomicoServiceImpl implements EconomicoService {
             economicoEntity.setHorasConvenio(economico.getHorasConvenio());
             economicoEntity.setUrllogo(economico.getUrllogo());
             economicoEntity.setUrlWeb(economico.getUrlWeb());
-            economicoEntity.setCNAE(economico.getCnae());
+            economicoEntity.setCNAE(Long.valueOf(economico.getCnae()));
             economicoEntity.setEsPyme(economico.getEsPyme());
             economicoEntity.setPresentacionEmpresa(economico.getPresentacionEmpresa());
             economicoEntity.setDescripcionIDI(economico.getDescripcionIDI());
