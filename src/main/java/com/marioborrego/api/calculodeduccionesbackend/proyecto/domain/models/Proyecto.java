@@ -15,7 +15,8 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity(name = "proyecto")
+@Entity
+@Table(name = "proyecto")
 public class Proyecto {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

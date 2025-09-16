@@ -1,7 +1,7 @@
 package com.marioborrego.api.calculodeduccionesbackend.proyecto.domain.models.enums;
 
 public enum Estrategia {
-    AUTOLIQUIDATIBO,
+    AUTOLIQUIDATIVO,
     CERTIFICACION,
     IMV
 }

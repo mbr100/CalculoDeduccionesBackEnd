@@ -67,7 +67,7 @@ public class CrearEconomicoDTO {
     @NotNull(message = "La anualidad es obligatoria")
     @Min(value = 2000, message = "La anualidad no puede ser anterior al año 2000")
     @Max(value = 2100, message = "La anualidad no puede ser posterior al año 2100")
-    private int anualidad;
+    private Long anualidad;
 
     @NotNull(message = "Debe indicarse si es Pyme o no")
     private Boolean esPyme;
