@@ -38,7 +38,7 @@ public class EconomicosController {
             @ApiResponse(responseCode = "400", description = "Error al obtener el listado de económicos")
     })
     @GetMapping("")
-    public ResponseEntity<Page<EconomicoListadoGeneralDto>> listadoDeEconomicosPaginado(@PageableDefault( size = 20, sort = "nombre", direction = Sort.Direction.ASC) Pageable pageable) {
+    public ResponseEntity<Page<EconomicoListadoGeneralDto>> listadoDeEconomicosPaginado(@PageableDefault(page = 0, size = 20, sort = "nombre", direction = Sort.Direction.ASC) Pageable pageable) {
         log.info("Petición para obtener el listado de económicos con paginación: página {}, tamaño {}", pageable.getPageNumber(), pageable.getPageSize());
         try {
             Page<EconomicoListadoGeneralDto> economicos = economicoService.obtenerEconomicosPaginados(pageable);
@@ -124,7 +124,7 @@ public class EconomicosController {
             log.error("ID de económico no válido: {}", idEconomico);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
-        List<GastoProyectoDetalladoDTO> resumen = gastoProyectoService.obtenerGastoDetalladoPorEconomico(idEconomico);
+        List<GastoProyectoDetalladoDTO> resumen = gastoProyectoService.calcularGastosPorEconomico(idEconomico);
         return ResponseEntity.status(HttpStatus.OK).body(resumen);
     }
 }

@@ -16,6 +16,9 @@ public class GastoProyectoDetalladoDTO {
     private String acronimo;
     private String titulo;
     private List<PartidaGastoDTO> partidas;
+    private Long porcentajeDeduccion;
+    private Long totalDeduccion;
+    private Long deduccion;
     private Double total;
 
 }

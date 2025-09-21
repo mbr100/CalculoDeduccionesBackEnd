@@ -18,10 +18,12 @@ import java.util.Set;
 @AllArgsConstructor
 @Entity(name = "Personal")
 public class Personal {
+
     @Id
     @Column(name = "id_personal", nullable = false, unique = true)
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idPersona;
+
     private String nombre;
     private String apellidos;
     private String dni;
@@ -33,36 +35,42 @@ public class Personal {
     private String titulacion4;
     private boolean esPersonalInvestigador;
 
-    @ManyToOne()
+    @ManyToOne
+    @Builder.Default
     @JoinColumn(name = "id_economico", nullable = false)
-    private Economico economico;
+    private Economico economico = new Economico();
 
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "id_retribucion")
+    @Builder.Default
     @JsonManagedReference
-    private Retribucion retribucion;
+    private Retribucion retribucion = new Retribucion();
 
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "id_bases_cotizacion")
-    private BasesCotizacion basesCotizacion;
+    @Builder.Default
+    private BasesCotizacion basesCotizacion = new BasesCotizacion();
 
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "id_horas_empleado")
-    private HorasPersonal horasPersonal;
+    @Builder.Default
+    private HorasPersonal horasPersonal = new HorasPersonal();
 
     @OneToMany(mappedBy = "personal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
     private List<BajaLaboral> bajasLaborales = new ArrayList<>();
 
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "id_bonificaciones_trabajador")
-    private BonificacionesTrabajador bonificacionesTrabajador;
+    @Builder.Default
+    private BonificacionesTrabajador bonificacionesTrabajador = new BonificacionesTrabajador();
 
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "id_coste_hora_personal")
-    private CosteHoraPersonal costeHoraPersonal;
+    @Builder.Default
+    private CosteHoraPersonal costeHoraPersonal = new CosteHoraPersonal();
 
     @OneToMany(mappedBy = "personal", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @Builder.Default
     private Set<ProyectoPersonal> proyectoPersonales = new HashSet<>();
-
 }

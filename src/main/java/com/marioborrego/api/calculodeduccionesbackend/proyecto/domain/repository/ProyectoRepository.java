@@ -1,4 +1,5 @@
 package com.marioborrego.api.calculodeduccionesbackend.proyecto.domain.repository;
+import com.marioborrego.api.calculodeduccionesbackend.proyecto.domain.repository.views.GastoPersonalProyectoView;
 import com.marioborrego.api.calculodeduccionesbackend.proyecto.domain.models.Proyecto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,14 +19,42 @@ public interface ProyectoRepository extends JpaRepository<Proyecto, Long> {
     @Query("SELECT p FROM Proyecto p WHERE p.economico.idEconomico = :idEconomico")
     List<Proyecto> findAllByIdEconomico(Long idEconomico);
 
+//    @Query("""
+//        SELECT p.idProyecto, p.acronimo, p.titulo, SUM(pp.horasAsignadas * ch.costeHora)
+//        FROM Proyecto p
+//        JOIN proyecto_personal pp ON pp.proyecto.idProyecto = p.idProyecto
+//        JOIN Personal per ON per.idPersona = pp.personal.idPersona
+//        JOIN CosteHoraPersonal ch ON ch.id = per.costeHoraPersonal.id
+//        WHERE p.economico.idEconomico = :idEconomico
+//        GROUP BY p.idProyecto, p.acronimo, p.titulo
+//    """)
+//    List<Object[]> calcularGastoPersonalPorProyecto(@Param("idEconomico") Long idEconomico);
+
+//    @Query("""
+//        SELECT p.idProyecto as idProyecto, p.acronimo as acronimo, p.titulo as titulo,
+//               SUM(pp.horasAsignadas * ch.costeHora) as gastoPersonal
+//        FROM Proyecto p
+//        JOIN proyecto_personal pp ON pp.proyecto.idProyecto = p.idProyecto
+//        JOIN Personal per ON per.idPersona = pp.personal.idPersona
+//        JOIN CosteHoraPersonal ch ON ch.id = per.costeHoraPersonal.id
+//        WHERE p.economico.idEconomico = :idEconomico
+//        GROUP BY p.idProyecto, p.acronimo, p.titulo
+//    """)
+//    List<GastoPersonalProyectoView> calcularGastoPersonalPorProyecto(@Param("idEconomico") Long idEconomico);
+
+
     @Query("""
-        SELECT p.idProyecto, p.acronimo, p.titulo, SUM(pp.horasAsignadas * ch.costeHora)
+        SELECT p.idProyecto as idProyecto,\s
+               p.acronimo as acronimo,\s
+               p.titulo as titulo,
+               p.calificacion as calificacion,
+               SUM(pp.horasAsignadas * ch.costeHora) as gastoPersonal
         FROM Proyecto p
         JOIN proyecto_personal pp ON pp.proyecto.idProyecto = p.idProyecto
-        JOIN Personal per ON per.idPersona = pp.personal.idPersona
-        JOIN CosteHoraPersonal ch ON ch.id = per.costeHoraPersonal.id
+        JOIN pp.personal per
+        JOIN per.costeHoraPersonal ch
         WHERE p.economico.idEconomico = :idEconomico
-        GROUP BY p.idProyecto, p.acronimo, p.titulo
-    """)
-    List<Object[]> calcularGastoPersonalPorProyecto(@Param("idEconomico") Long idEconomico);
+        GROUP BY p.idProyecto, p.acronimo, p.titulo, p.calificacion
+       \s""")
+    List<GastoPersonalProyectoView> calcularGastoPersonalPorProyecto(@Param("idEconomico") Long idEconomico);
 }

@@ -1,7 +1,9 @@
 //package com.marioborrego.api.calculodeduccionesbackend.configuration;
 //
 //import com.marioborrego.api.calculodeduccionesbackend.economico.domain.models.Economico;
+//import com.marioborrego.api.calculodeduccionesbackend.economico.domain.models.PorcentajeCotizacionEmpresa;
 //import com.marioborrego.api.calculodeduccionesbackend.economico.domain.repository.EconomicoRepository;
+//import com.marioborrego.api.calculodeduccionesbackend.economico.domain.repository.PorcentajeCotizacionEmpresaRepository;
 //import com.marioborrego.api.calculodeduccionesbackend.personal.business.impl.CosteHoraService;
 //import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.*;
 //import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.enums.TiposBonificacion;
@@ -20,8 +22,10 @@
 //
 //    private final PersonalRepository personalRepository;
 //    private final CosteHoraService costeHoraService;
+//    private final PorcentajeCotizacionEmpresaRepository repository;
 //
-//    public DataLoader(PersonalRepository personalRepository, CosteHoraService costeHoraService) {
+//    public DataLoader(PersonalRepository personalRepository, CosteHoraService costeHoraService, PorcentajeCotizacionEmpresaRepository repository) {
+//        this.repository = repository;
 //        this.personalRepository = personalRepository;
 //        this.costeHoraService = costeHoraService;
 //    }
@@ -157,6 +161,41 @@
 //                .retribucionTotal(BigDecimal.valueOf(retribucion.getPercepcionesSalariales()))
 //                .personal(savedPersonal)
 //                .build();
+//
+//        PorcentajeCotizacionEmpresa cnae6201 = PorcentajeCotizacionEmpresa.builder()
+//                .CNAE("6201")
+//                .descripcion("Programación informática")
+//                .contingenciasComunes(new BigDecimal("23.60"))
+//                .accidentesTrabajo(new BigDecimal("1.50")) // ejemplo, puede variar según actividad
+//                .desempleo(new BigDecimal("5.50"))
+//                .fogasa(new BigDecimal("0.20"))
+//                .formacionProfesional(new BigDecimal("0.60"))
+//                .build();
+//        PorcentajeCotizacionEmpresa cnae4711 = PorcentajeCotizacionEmpresa.builder()
+//                .CNAE("4711")
+//                .descripcion("Comercio al por menor en establecimientos no especializados")
+//                .contingenciasComunes(new BigDecimal("23.60"))
+//                .accidentesTrabajo(new BigDecimal("1.10"))
+//                .desempleo(new BigDecimal("5.50"))
+//                .fogasa(new BigDecimal("0.20"))
+//                .formacionProfesional(new BigDecimal("0.60"))
+//                .build();
+//
+//        // CNAE 8610 - Actividades hospitalarias
+//        PorcentajeCotizacionEmpresa cnae8610 = PorcentajeCotizacionEmpresa.builder()
+//                .CNAE("8610")
+//                .descripcion("Actividades hospitalarias")
+//                .contingenciasComunes(new BigDecimal("23.60"))
+//                .accidentesTrabajo(new BigDecimal("2.00"))
+//                .desempleo(new BigDecimal("5.50"))
+//                .fogasa(new BigDecimal("0.20"))
+//                .formacionProfesional(new BigDecimal("0.60"))
+//                .build();
+//
+//        // Guardamos en base de datos
+//        repository.save(cnae6201);
+//        repository.save(cnae4711);
+//        repository.save(cnae8610);
 //
 //        costeHoraService.calcularCosteHoraEconomico(savedPersonal.getEconomico());
 //

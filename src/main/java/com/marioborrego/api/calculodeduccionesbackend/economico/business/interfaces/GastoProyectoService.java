@@ -7,5 +7,5 @@ import java.util.List;
 
 @Service
 public interface GastoProyectoService {
-    List<GastoProyectoDetalladoDTO> obtenerGastoDetalladoPorEconomico(Long idEconomico);
+    List<GastoProyectoDetalladoDTO> calcularGastosPorEconomico(Long idEconomico);
 }
