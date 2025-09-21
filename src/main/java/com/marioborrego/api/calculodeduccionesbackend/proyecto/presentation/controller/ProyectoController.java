@@ -2,6 +2,7 @@ package com.marioborrego.api.calculodeduccionesbackend.proyecto.presentation.con
 
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.ActualizacionDTO;
 import com.marioborrego.api.calculodeduccionesbackend.proyecto.business.interfaces.ProyectoService;
+import com.marioborrego.api.calculodeduccionesbackend.proyecto.presentation.dto.ActualizarAsignacionDTO;
 import com.marioborrego.api.calculodeduccionesbackend.proyecto.presentation.dto.CrearProyectoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.proyecto.presentation.dto.ListadoDeProyectosResponseDTO;
 
@@ -108,7 +109,7 @@ public class ProyectoController {
         }
     }
 
-    @GetMapping("/economico/{idEconomico}")
+    @GetMapping("/asignaciones/{idEconomico}")
     public ResponseEntity<MatrizAsignacionesDTO> listarPersonalPorProyectoAsignacion(@PathVariable Long idEconomico) {
         log.info("Recibiendo solicitud para listar matriz de asignaciones del economico con ID: {}", idEconomico);
         if (idEconomico == null || idEconomico <= 0) {
@@ -119,9 +120,24 @@ public class ProyectoController {
             if (m == null) {
                 return ResponseEntity.noContent().build();
             }
-            return ResponseEntity.ok(m);
+            return ResponseEntity.status(HttpStatus.OK).body(m);
         } catch (Exception e){
             log.error("Error al obtener la matriz de asignaciones: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PutMapping("/asignaciones")
+    public ResponseEntity<Void> actualizarAsignaciones(@RequestBody ActualizarAsignacionDTO asignacionDTO) {
+        log.info("Recibiendo solicitud para actualizar la matriz de asignaciones");
+        if (asignacionDTO == null || asignacionDTO.getIdProyecto() == null || asignacionDTO.getIdPersonal() == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        try {
+            proyectoService.actualizarAsignaciones(asignacionDTO);
+            return ResponseEntity.status(HttpStatus.OK).build();
+        } catch (Exception e) {
+            log.error("Error al actualizar la matriz de asignaciones: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

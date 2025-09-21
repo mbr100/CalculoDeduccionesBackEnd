@@ -10,6 +10,6 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class MatrizAsignacionesDTO {
-    private List<String> proyectos;                // nombres/acrónimos de columnas
+    private List<ProyectoAsignacionDTO> proyectos;                // nombres/acrónimos de columnas
     private List<FilaAsignacionDTO> filas;         // cada persona = una fila
 }

@@ -1,8 +1,8 @@
 package com.marioborrego.api.calculodeduccionesbackend.economico.presentation.controller;
 
 import com.marioborrego.api.calculodeduccionesbackend.economico.business.interfaces.EconomicoService;
+import com.marioborrego.api.calculodeduccionesbackend.economico.business.interfaces.GastoProyectoService;
 import com.marioborrego.api.calculodeduccionesbackend.economico.presentation.dto.*;
-import com.marioborrego.api.calculodeduccionesbackend.helper.Sanitize;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -16,16 +16,20 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 
 @RestController()
 @RequestMapping("/api/economicos")
 public class EconomicosController {
     private final Logger log = LoggerFactory.getLogger(EconomicosController.class);
 
-    public final EconomicoService economicoService;
+    private final EconomicoService economicoService;
+    private final GastoProyectoService gastoProyectoService;
 
-    public EconomicosController(EconomicoService economicoService) {
+    public EconomicosController(EconomicoService economicoService, GastoProyectoService gastoProyectoService) {
         this.economicoService = economicoService;
+        this.gastoProyectoService = gastoProyectoService;
     }
 
     @Operation(summary = "Obtener listado de economicos", description = "Permite obtener un listado de económios registrados en el sistema.")
@@ -34,7 +38,7 @@ public class EconomicosController {
             @ApiResponse(responseCode = "400", description = "Error al obtener el listado de económicos")
     })
     @GetMapping("")
-    public ResponseEntity<Page<EconomicoListadoGeneralDto>> listadoDeEconomicosPaginado(@PageableDefault(page = 0, size = 20, sort = "nombre", direction = Sort.Direction.ASC) Pageable pageable) {
+    public ResponseEntity<Page<EconomicoListadoGeneralDto>> listadoDeEconomicosPaginado(@PageableDefault( size = 20, sort = "nombre", direction = Sort.Direction.ASC) Pageable pageable) {
         log.info("Petición para obtener el listado de económicos con paginación: página {}, tamaño {}", pageable.getPageNumber(), pageable.getPageSize());
         try {
             Page<EconomicoListadoGeneralDto> economicos = economicoService.obtenerEconomicosPaginados(pageable);
@@ -71,7 +75,7 @@ public class EconomicosController {
     })
     @PostMapping()
     public ResponseEntity<EconomicoCreadoDTO> crearEconomico(@RequestBody CrearEconomicoDTO crearEconomicoDTO) {
-        log.info("Petición para crear un nuevo económico: CIF {} an unualiad {}", crearEconomicoDTO.getCif(), crearEconomicoDTO.getAnualidad());
+        log.info("Petición para crear un nuevo económico: CIF {} an anualidad {}", crearEconomicoDTO.getCif(), crearEconomicoDTO.getAnualidad());
         boolean resultado = economicoService.comprobarExistenciaEconomico(crearEconomicoDTO.getCif(), crearEconomicoDTO.getAnualidad());
         log.warn("Existencia de economico {}", resultado);
         if (resultado) {
@@ -93,14 +97,11 @@ public class EconomicosController {
     @Operation(summary = "Obtener la Información General Economico", description = "El usuario selecciona un economico y permite visualizar la pantalla general con los datos generales de la empresa para esa anualidad")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Se devuelve el objeto ya que se ha encontrado"),
-            @ApiResponse(responseCode = "400", description = "Se devuelce un error ya que no se ha encontrado")
+            @ApiResponse(responseCode = "400", description = "Se devuelve un error ya que no se ha encontrado")
     })
     @GetMapping("/{idEconomico}")
     public ResponseEntity<EconomicoDTO> getEconomico(@PathVariable Long idEconomico) {
-        //TODO: VALIDACIONES DE SEGURIDAD CUANDO SE IMPLEMENTEN
-
         EconomicoDTO economicoDTO = economicoService.obtenerEconomico(idEconomico);
-
         return ResponseEntity.status(HttpStatus.OK).body(economicoDTO);
     }
 
@@ -115,5 +116,15 @@ public class EconomicosController {
             log.error("Error al actualizar los datos del económico: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(false);
         }
+    }
+
+    @GetMapping("/{idEconomico}/resumen")
+    public ResponseEntity<List<GastoProyectoDetalladoDTO>> getResumenEconomico(@PathVariable Long idEconomico) {
+        if (idEconomico == null || idEconomico <= 0) {
+            log.error("ID de económico no válido: {}", idEconomico);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        List<GastoProyectoDetalladoDTO> resumen = gastoProyectoService.obtenerGastoDetalladoPorEconomico(idEconomico);
+        return ResponseEntity.status(HttpStatus.OK).body(resumen);
     }
 }

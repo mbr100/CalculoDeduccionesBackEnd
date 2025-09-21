@@ -11,10 +11,7 @@ import com.marioborrego.api.calculodeduccionesbackend.proyecto.domain.models.Pro
 import com.marioborrego.api.calculodeduccionesbackend.proyecto.domain.models.enums.Calificacion;
 import com.marioborrego.api.calculodeduccionesbackend.proyecto.domain.models.enums.Estrategia;
 import com.marioborrego.api.calculodeduccionesbackend.proyecto.domain.repository.ProyectoRepository;
-import com.marioborrego.api.calculodeduccionesbackend.proyecto.presentation.dto.CrearProyectoDTO;
-import com.marioborrego.api.calculodeduccionesbackend.proyecto.presentation.dto.FilaAsignacionDTO;
-import com.marioborrego.api.calculodeduccionesbackend.proyecto.presentation.dto.ListadoDeProyectosResponseDTO;
-import com.marioborrego.api.calculodeduccionesbackend.proyecto.presentation.dto.MatrizAsignacionesDTO;
+import com.marioborrego.api.calculodeduccionesbackend.proyecto.presentation.dto.*;
 import com.marioborrego.api.calculodeduccionesbackend.proyecto.presentation.dto.enums.ProyectoCampo;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -140,9 +137,12 @@ public class ProyectoServiceImpl implements ProyectoService {
         if (personas.isEmpty()){
             throw new IllegalArgumentException("No se encontraron personas para el ID de económico proporcionado: " + idEconomico);
         }
-        List<String> nombresProyectos = proyectos.stream()
-                .map(Proyecto::getAcronimo)
-                .toList();
+        List<ProyectoAsignacionDTO> nombresProyectos = proyectos.stream()
+                .map(proyecto -> ProyectoAsignacionDTO.builder()
+                            .idProyecto(proyecto.getIdProyecto())
+                            .acronimo(proyecto.getAcronimo())
+                            .build()
+                ).toList();
         List<FilaAsignacionDTO> filas = personas.stream().map(persona -> {
                     List<Double> horas = proyectos.stream().map(p -> persona.getProyectoPersonales().stream()
                                     .filter(pp -> pp.getProyecto().getIdProyecto().equals(p.getIdProyecto()))
@@ -154,6 +154,7 @@ public class ProyectoServiceImpl implements ProyectoService {
                             .idPersonal(persona.getIdPersona())
                             .nombreCompleto(persona.getNombre() + " " + persona.getApellidos())
                             .horas(horas)
+                            .horasMaximas(persona.getHorasPersonal().getHorasMaximasAnuales())
                             .build();
                 })
                 .toList();
@@ -161,6 +162,37 @@ public class ProyectoServiceImpl implements ProyectoService {
                 .proyectos(nombresProyectos)
                 .filas(filas)
                 .build();
+    }
+
+    @Override
+    public void actualizarAsignaciones(ActualizarAsignacionDTO asignacion) {
+        Proyecto proyecto = proyectoRepository.findById(asignacion.getIdProyecto())
+                .orElseThrow(() -> new IllegalArgumentException("No se encontró un proyecto con el ID proporcionado: " + asignacion.getIdProyecto()));
+        Personal persona = personalRepository.findById(asignacion.getIdPersonal())
+                .orElseThrow(() -> new IllegalArgumentException("No se encontró una persona con el ID proporcionado: " + asignacion.getIdPersonal()));
+
+        ProyectoPersonal proyectoPersonal = persona.getProyectoPersonales().stream()
+                .filter(pp -> pp.getProyecto().getIdProyecto().equals(proyecto.getIdProyecto()))
+                .findFirst()
+                .orElse(null);
+
+        if (proyectoPersonal == null) {
+            if (asignacion.getHoras() > 0) {
+                ProyectoPersonal nuevoPP = ProyectoPersonal.builder()
+                        .personal(persona)
+                        .proyecto(proyecto)
+                        .horasAsignadas(Double.valueOf(asignacion.getHoras()))
+                        .build();
+                persona.getProyectoPersonales().add(nuevoPP);
+            }
+        } else {
+            if (asignacion.getHoras() > 0) {
+                proyectoPersonal.setHorasAsignadas(Double.valueOf(asignacion.getHoras()));
+            } else {
+                persona.getProyectoPersonales().remove(proyectoPersonal);
+            }
+        }
+        personalRepository.save(persona);
     }
 
     private LocalDate parseToLocalDate(Object valor) {

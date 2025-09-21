@@ -1,6 +1,7 @@
 package com.marioborrego.api.calculodeduccionesbackend.proyecto.business.interfaces;
 
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.ActualizacionDTO;
+import com.marioborrego.api.calculodeduccionesbackend.proyecto.presentation.dto.ActualizarAsignacionDTO;
 import com.marioborrego.api.calculodeduccionesbackend.proyecto.presentation.dto.CrearProyectoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.proyecto.presentation.dto.ListadoDeProyectosResponseDTO;
 import com.marioborrego.api.calculodeduccionesbackend.proyecto.presentation.dto.MatrizAsignacionesDTO;
@@ -16,4 +17,6 @@ public interface ProyectoService {
     void eliminarProyecto(Long idProyecto);
 
     MatrizAsignacionesDTO listarPersonalPorProyectoAsignacion(Long idEconomico);
+
+    void actualizarAsignaciones(ActualizarAsignacionDTO matriz);
 }

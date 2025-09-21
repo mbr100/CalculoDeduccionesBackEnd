@@ -6,7 +6,9 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
 
+@Service
 public interface EconomicoService {
     boolean eliminarEconomico(EconomicoListadoGeneralDto economico);
     Page<EconomicoListadoGeneralDto> obtenerEconomicosPaginados(Pageable pageable);

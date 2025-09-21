@@ -4,6 +4,8 @@ import com.marioborrego.api.calculodeduccionesbackend.economico.business.interfa
 import com.marioborrego.api.calculodeduccionesbackend.economico.domain.models.Economico;
 import com.marioborrego.api.calculodeduccionesbackend.economico.domain.repository.EconomicoRepository;
 import com.marioborrego.api.calculodeduccionesbackend.economico.presentation.dto.*;
+import com.marioborrego.api.calculodeduccionesbackend.economico.presentation.exceptions.EconomicoNoEncontrado;
+import com.marioborrego.api.calculodeduccionesbackend.economico.presentation.exceptions.NewEconomicoException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +18,8 @@ import java.util.List;
 public class EconomicoServiceImpl implements EconomicoService {
 
     private final EconomicoRepository economicoRepository;
+    private static final String ECONOMICO_NOT_FOUND_MESSAGE = "Económico no encontrado con ID: ";
+
 
     public EconomicoServiceImpl(EconomicoRepository economicoRepository) {
         this.economicoRepository = economicoRepository;
@@ -25,19 +29,18 @@ public class EconomicoServiceImpl implements EconomicoService {
     public boolean eliminarEconomico(EconomicoListadoGeneralDto economico) {
         try {
             Economico economicoEntity = economicoRepository.findById(economico.getId())
-                    .orElseThrow(() -> new RuntimeException("Económico no encontrado con ID: " + economico.getId()));
+                    .orElseThrow(() -> new EconomicoNoEncontrado(ECONOMICO_NOT_FOUND_MESSAGE+ economico.getId()));
             economicoEntity.setActivo(false);
             economicoRepository.save(economicoEntity);
             return true;
         } catch (Exception e) {
-            throw new RuntimeException("Error al eliminar el económico", e);
+            throw new NewEconomicoException("Error al eliminar el económico" + e.getMessage());
         }
     }
 
     public Page<EconomicoListadoGeneralDto> obtenerEconomicosPaginados(Pageable pageable) {
         try {
             Page<Economico> economicos = economicoRepository.findAllActivosPaginado(pageable);
-
             return economicos.map(empresa -> EconomicoListadoGeneralDto.builder()
                     .id(empresa.getIdEconomico())
                     .nombre(empresa.getNombre())
@@ -48,7 +51,7 @@ public class EconomicoServiceImpl implements EconomicoService {
                     .build()
             );
         } catch (Exception e) {
-            throw new RuntimeException("Error al obtener el listado de económicos", e);
+            throw new InternalError("Error al obtener el listado de económicos", e);
         }
     }
 
@@ -77,7 +80,7 @@ public class EconomicoServiceImpl implements EconomicoService {
                     .urllogo(crearEconomicoDTO.getUrllogo())
                     .urlWeb(crearEconomicoDTO.getUrlWeb())
                     .CNAE(Long.valueOf(crearEconomicoDTO.getCnae()))
-                    .anualidad((long) crearEconomicoDTO.getAnualidad())
+                    .anualidad(crearEconomicoDTO.getAnualidad())
                     .esPyme(crearEconomicoDTO.getEsPyme())
                     .activo(true)
                     .build();
@@ -93,7 +96,7 @@ public class EconomicoServiceImpl implements EconomicoService {
     @Override
     public EconomicoDTO obtenerEconomico(Long idEconomico) {
         try {
-            Economico economico = economicoRepository.findById(idEconomico).orElseThrow(() -> new RuntimeException("Económico no encontrado con ID: " + idEconomico));
+            Economico economico = economicoRepository.findById(idEconomico).orElseThrow(() -> new EconomicoNoEncontrado(ECONOMICO_NOT_FOUND_MESSAGE + idEconomico));
             return EconomicoDTO.builder()
                     .id(economico.getIdEconomico())
                     .nombre(economico.getNombre())
@@ -119,8 +122,7 @@ public class EconomicoServiceImpl implements EconomicoService {
     @Override
     public void actualizarDatosEconomico(ActualizarDatosEconomicoDTO economico) {
         try {
-            Economico economicoEntity = economicoRepository.findById(economico.getId())
-                    .orElseThrow(() -> new RuntimeException("Económico no encontrado con ID: " + economico.getId()));
+            Economico economicoEntity = economicoRepository.findById(economico.getId()).orElseThrow(() -> new EconomicoNoEncontrado(ECONOMICO_NOT_FOUND_MESSAGE + economico.getId()));
             economicoEntity.setNombre(economico.getNombre());
             economicoEntity.setDireccion(economico.getDireccion());
             economicoEntity.setTelefono(economico.getTelefono());
