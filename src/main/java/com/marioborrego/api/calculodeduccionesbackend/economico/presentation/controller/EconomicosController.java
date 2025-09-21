@@ -105,6 +105,11 @@ public class EconomicosController {
         return ResponseEntity.status(HttpStatus.OK).body(economicoDTO);
     }
 
+    @Operation(summary = "Actualizar los datos del económico", description = "Permite actualizar los datos de un económico existente en el sistema.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Datos del económico actualizados correctamente"),
+            @ApiResponse(responseCode = "400", description = "Error al actualizar los datos del económico")
+    })
     @PutMapping("/actualizar")
     public ResponseEntity<Boolean> actualizarDatosEconomico(@RequestBody ActualizarDatosEconomicoDTO economico) {
         log.info("Petición para actualizar los datos del económico: {}", economico);
@@ -118,6 +123,11 @@ public class EconomicosController {
         }
     }
 
+    @Operation(summary = "Obtener el resumen económico por proyectos", description = "Permite obtener un resumen económico detallado de los proyectos asociados a un económico específico.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Resumen económico obtenido correctamente"),
+            @ApiResponse(responseCode = "400", description = "Error al obtener el resumen económico")
+    })
     @GetMapping("/{idEconomico}/resumen")
     public ResponseEntity<List<GastoProyectoDetalladoDTO>> getResumenEconomico(@PathVariable Long idEconomico) {
         if (idEconomico == null || idEconomico <= 0) {
