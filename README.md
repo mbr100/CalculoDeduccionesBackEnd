@@ -123,7 +123,11 @@ http://localhost:8080/swagger-ui/index.html
 
 ---
 
-
 ## Licencia
 
-MIT License
+Este proyecto se distribuye bajo licencia **propietaria**.
+
+- Uso personal y educativo: gratuito.
+- Uso comercial: requiere adquirir una licencia.
+
+Para más información sobre licencias comerciales, contactar con [tu correo o web].
