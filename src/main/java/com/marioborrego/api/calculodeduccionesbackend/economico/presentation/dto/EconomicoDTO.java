@@ -2,7 +2,6 @@ package com.marioborrego.api.calculodeduccionesbackend.economico.presentation.dt
 
 import lombok.*;
 
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

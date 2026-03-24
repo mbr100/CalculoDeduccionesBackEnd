@@ -85,6 +85,7 @@ public class PersonalServiceImpl implements PersonalService {
                     .titulacion3(personal.getTitulacion3())
                     .titulacion4(personal.getTitulacion4())
                     .esPersonalInvestigador(personal.isEsPersonalInvestigador())
+                    .esContratoIndefinido(personal.isEsContratoIndefinido())
                     .build());
         } else {
             return Page.empty();
@@ -130,6 +131,7 @@ public class PersonalServiceImpl implements PersonalService {
                 .titulacion3(personalEconomicoDTO.getTitulacion3())
                 .titulacion4(personalEconomicoDTO.getTitulacion4())
                 .esPersonalInvestigador(personalEconomicoDTO.isEsPersonalInvestigador())
+                .esContratoIndefinido(personalEconomicoDTO.isEsContratoIndefinido())
                 .economico(economico)
                 .retribucion(retribucion)
                 .basesCotizacion(basesCotizacion)
@@ -159,6 +161,7 @@ public class PersonalServiceImpl implements PersonalService {
                     .titulacion3(savedPersonal.getTitulacion3())
                     .titulacion4(savedPersonal.getTitulacion4())
                     .esPersonalInvestigador(savedPersonal.isEsPersonalInvestigador())
+                    .esContratoIndefinido(savedPersonal.isEsContratoIndefinido())
                     .idEconomico(savedPersonal.getEconomico().getIdEconomico())
                     .build();
         } catch (Exception e) {
@@ -230,6 +233,7 @@ public class PersonalServiceImpl implements PersonalService {
         updatedPersonal.setTitulacion3(personalEconomicoDTO.getTitulacion3());
         updatedPersonal.setTitulacion4(personalEconomicoDTO.getTitulacion4());
         updatedPersonal.setEsPersonalInvestigador(personalEconomicoDTO.isEsPersonalInvestigador());
+        updatedPersonal.setEsContratoIndefinido(personalEconomicoDTO.isEsContratoIndefinido());
         updatedPersonal.setEconomico(economico);
         return updatedPersonal;
     }
