@@ -11,6 +11,7 @@ import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bajasLaborales.ListadoPersonalSelectorEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.ActualizarBonificacionDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.BonificacionesEmpleadoEconomicoDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.CrearBonificacionDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.ListarPersonalEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.PersonalEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.resumenCostes.ResumenCostePersonalDTO;
@@ -38,6 +39,7 @@ public interface PersonalService {
     void eliminarBajaLaboral(Long idBajaLaboral);
     void actualizarBajaLaboral(ActualizarBajaLaboralDTO actualizarBajaLaboralDTO);
     Page<BonificacionesEmpleadoEconomicoDTO> obtenerBonificacionesEmpleadoPorEconomico(Long idEconomico, Pageable pageable);
+    void crearBonificacion(CrearBonificacionDTO crearBonificacionDTO);
     void actualizarBonificacionEmpleado(ActualizarBonificacionDTO actualizarBonificacionEmpleadoDTO);
     void eliminarBonificacionEmpleado(Long idBonificacion);
     Page<ResumenCostePersonalDTO> obtenerResumenCostePersonal(Long idEconomico, Pageable pageable);

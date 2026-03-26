@@ -19,4 +19,22 @@ public class ResumenCostePersonalDTO {
     private BigDecimal costeSS;
     private BigDecimal horasMaximas;
     private BigDecimal costeHora;
+
+    // Desglose de cuotas SS empresa
+    private BigDecimal cuotaCC;
+    private BigDecimal cuotaATEP;
+    private BigDecimal cuotaDesempleo;
+    private BigDecimal cuotaFogasa;
+    private BigDecimal cuotaFP;
+    private BigDecimal cuotaMEI;
+
+    // Trazabilidad AT/EP
+    private BigDecimal tipoATEPAplicado;
+    private String origenTipoATEP;
+
+    // Bonificaciones SS
+    private BigDecimal ssEmpresaBruta;
+    private BigDecimal ahorroBonificaciones;
+    private BigDecimal ahorroInvestigador;
+    private BigDecimal ahorroOtrasBonificaciones;
 }

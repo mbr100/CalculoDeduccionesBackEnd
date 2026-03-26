@@ -22,5 +22,6 @@ public class PersonalEconomicoDTO {
     private String titulacion4;
     private boolean esPersonalInvestigador;
     private boolean esContratoIndefinido;
+    private String claveOcupacion;
     private Long idEconomico;
 }

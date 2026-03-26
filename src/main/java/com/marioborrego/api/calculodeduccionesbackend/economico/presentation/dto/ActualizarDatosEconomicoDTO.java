@@ -21,6 +21,7 @@ public class ActualizarDatosEconomicoDTO {
     private String urlWeb;
     private Integer cnae;
     private Boolean esPyme;
+    private Boolean selloPymeInnovadora;
     private String presentacionEmpresa;
     private String descripcionIDI;
 }

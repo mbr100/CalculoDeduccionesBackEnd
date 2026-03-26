@@ -20,6 +20,7 @@ public class EconomicoDTO{
     Long cnae;
     Long anualidad;
     boolean esPyme;
+    boolean selloPymeInnovadora;
     String presentacionEmpresa;
     String descripcionIDI;
 }

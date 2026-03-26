@@ -13,6 +13,7 @@ import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bajasLaborales.ListadoPersonalSelectorEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.ActualizarBonificacionDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.BonificacionesEmpleadoEconomicoDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.CrearBonificacionDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.ListarPersonalEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.PersonalEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.resumenCostes.ResumenCostePersonalDTO;
@@ -40,9 +41,12 @@ import java.util.List;
 public class PersonalController {
     private final Logger log = LoggerFactory.getLogger(PersonalController.class);
     private final PersonalService personalService;
+    private final com.marioborrego.api.calculodeduccionesbackend.personal.business.impl.ValidacionImputacionService validacionImputacionService;
 
-    public PersonalController(PersonalService personalService) {
+    public PersonalController(PersonalService personalService,
+                              com.marioborrego.api.calculodeduccionesbackend.personal.business.impl.ValidacionImputacionService validacionImputacionService) {
         this.personalService = personalService;
+        this.validacionImputacionService = validacionImputacionService;
     }
 
     @Operation(summary = "Obtener listado de personal económico", description = "Permite obtener un listado de personal económico registrado en el sistema para un económico específico.")
@@ -433,6 +437,28 @@ public class PersonalController {
         }
     }
 
+    @Operation(summary = "Crear bonificación del personal", description = "Permite crear una nueva bonificación para un trabajador.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Bonificación creada correctamente"),
+            @ApiResponse(responseCode = "400", description = "Error de validación"),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor")
+    })
+    @PostMapping("/bonificacion")
+    public ResponseEntity<?> crearBonificacion(@RequestBody CrearBonificacionDTO crearBonificacionDTO) {
+        log.info("Petición para crear bonificación para personal ID: {}", crearBonificacionDTO.getIdPersona());
+        try {
+            this.personalService.crearBonificacion(crearBonificacionDTO);
+            log.info("Bonificación creada correctamente para personal ID: {}", crearBonificacionDTO.getIdPersona());
+            return ResponseEntity.status(HttpStatus.CREATED).build();
+        } catch (IllegalArgumentException e) {
+            log.warn("Error de validación al crear bonificación: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Map.of("mensaje", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error al crear la bonificación: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @Operation(summary = "Actualizar bonificación del personal", description = "Permite actualizar la bonificación de un personal específico dado el Id de Bonificación.")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Bonificación del personal actualizada correctamente"),
@@ -524,6 +550,26 @@ public class PersonalController {
             return ResponseEntity.status(HttpStatus.OK).body(resumen);
         } catch (Exception e) {
             log.error("Error al actualizar el resumen del coste de personal: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Validar imputación de horas I+D+i", description = "Valida si un trabajador con bonificación de investigador puede ser imputado a proyectos I+D+i según el sello PYME innovadora.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Resultado de la validación"),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor")
+    })
+    @GetMapping("/validar-imputacion/{idPersonal}/{anioFiscal}/{idEconomico}")
+    public ResponseEntity<?> validarImputacion(@PathVariable Long idPersonal, @PathVariable Integer anioFiscal, @PathVariable Long idEconomico) {
+        log.info("Validando imputación I+D+i para personal {} en año {} económico {}", idPersonal, anioFiscal, idEconomico);
+        try {
+            String error = validacionImputacionService.validarImputacionHoras(idPersonal, anioFiscal, idEconomico);
+            if (error != null) {
+                return ResponseEntity.ok(java.util.Map.of("bloqueado", true, "mensaje", error));
+            }
+            return ResponseEntity.ok(java.util.Map.of("bloqueado", false));
+        } catch (Exception e) {
+            log.error("Error al validar imputación: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

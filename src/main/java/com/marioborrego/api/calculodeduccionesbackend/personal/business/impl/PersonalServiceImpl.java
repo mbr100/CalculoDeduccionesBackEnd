@@ -18,6 +18,7 @@ import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bajasLaborales.ListadoPersonalSelectorEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.ActualizarBonificacionDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.BonificacionesEmpleadoEconomicoDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.CrearBonificacionDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.ListarPersonalEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.PersonalEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.resumenCostes.ResumenCostePersonalDTO;
@@ -51,6 +52,7 @@ public class PersonalServiceImpl implements PersonalService {
     private final BajaLaboralRepository bajaLaboralRepository;
     private final BonificacionesTrabajadorRepository bonificacionesTrabajadorRepository;
     private final CosteHoraService costeHoraService;
+    private final BonificacionService bonificacionService;
 
     private final Logger logger = LoggerFactory.getLogger(PersonalServiceImpl.class);
 
@@ -58,7 +60,8 @@ public class PersonalServiceImpl implements PersonalService {
 
     public PersonalServiceImpl(PersonalRepository personalRepository, EconomicoRepository economicoRepository, RetribucionRepository retribucionRepository,
                                BasesCotizacionRepository basesCotizacionRepository, HorasEmpleadoRepository horasEmpleadoRepository,
-                               BajaLaboralRepository bajaLaboralRepository, BonificacionesTrabajadorRepository bonificacionesTrabajadorRepository, CosteHoraService costeHoraService) {
+                               BajaLaboralRepository bajaLaboralRepository, BonificacionesTrabajadorRepository bonificacionesTrabajadorRepository,
+                               CosteHoraService costeHoraService, BonificacionService bonificacionService) {
         this.bonificacionesTrabajadorRepository = bonificacionesTrabajadorRepository;
         this.basesCotizacionRepository = basesCotizacionRepository;
         this.retribucionRepository = retribucionRepository;
@@ -67,6 +70,7 @@ public class PersonalServiceImpl implements PersonalService {
         this.horasEmpleadoRepository = horasEmpleadoRepository;
         this.bajaLaboralRepository = bajaLaboralRepository;
         this.costeHoraService = costeHoraService;
+        this.bonificacionService = bonificacionService;
     }
 
     @Override
@@ -86,6 +90,7 @@ public class PersonalServiceImpl implements PersonalService {
                     .titulacion4(personal.getTitulacion4())
                     .esPersonalInvestigador(personal.isEsPersonalInvestigador())
                     .esContratoIndefinido(personal.isEsContratoIndefinido())
+                    .claveOcupacion(personal.getClaveOcupacion())
                     .build());
         } else {
             return Page.empty();
@@ -132,11 +137,12 @@ public class PersonalServiceImpl implements PersonalService {
                 .titulacion4(personalEconomicoDTO.getTitulacion4())
                 .esPersonalInvestigador(personalEconomicoDTO.isEsPersonalInvestigador())
                 .esContratoIndefinido(personalEconomicoDTO.isEsContratoIndefinido())
+                .claveOcupacion(personalEconomicoDTO.getClaveOcupacion())
                 .economico(economico)
                 .retribucion(retribucion)
                 .basesCotizacion(basesCotizacion)
                 .horasPersonal(horasPersonal)
-                .bonificacionesTrabajador(null) // Será null si no se especifica
+                .bonificaciones(new ArrayList<>())
                 .bajasLaborales(new ArrayList<>())
                 .costeHoraPersonal(costeHoraPersonal)
                 .build();
@@ -162,6 +168,7 @@ public class PersonalServiceImpl implements PersonalService {
                     .titulacion4(savedPersonal.getTitulacion4())
                     .esPersonalInvestigador(savedPersonal.isEsPersonalInvestigador())
                     .esContratoIndefinido(savedPersonal.isEsContratoIndefinido())
+                    .claveOcupacion(savedPersonal.getClaveOcupacion())
                     .idEconomico(savedPersonal.getEconomico().getIdEconomico())
                     .build();
         } catch (Exception e) {
@@ -182,7 +189,7 @@ public class PersonalServiceImpl implements PersonalService {
             if (!Objects.equals(personal.get().getEconomico().getIdEconomico(), economico)) {
                 throw new IllegalArgumentException("El personal económico no pertenece al económico proporcionado.");
             }
-            bonificacionesTrabajadorRepository.delete(personal.get().getBonificacionesTrabajador());
+            bonificacionesTrabajadorRepository.deleteAll(personal.get().getBonificaciones());
             bajaLaboralRepository.deleteAll(personal.get().getBajasLaborales());
             horasEmpleadoRepository.delete(personal.get().getHorasPersonal());
             retribucionRepository.delete(personal.get().getRetribucion());
@@ -234,6 +241,7 @@ public class PersonalServiceImpl implements PersonalService {
         updatedPersonal.setTitulacion4(personalEconomicoDTO.getTitulacion4());
         updatedPersonal.setEsPersonalInvestigador(personalEconomicoDTO.isEsPersonalInvestigador());
         updatedPersonal.setEsContratoIndefinido(personalEconomicoDTO.isEsContratoIndefinido());
+        updatedPersonal.setClaveOcupacion(personalEconomicoDTO.getClaveOcupacion());
         updatedPersonal.setEconomico(economico);
         return updatedPersonal;
     }
@@ -568,6 +576,28 @@ public class PersonalServiceImpl implements PersonalService {
     }
 
     @Override
+    public void crearBonificacion(CrearBonificacionDTO dto) {
+        Personal personal = personalRepository.findById(dto.getIdPersona())
+                .orElseThrow(() -> new IllegalArgumentException("No existe personal con ID: " + dto.getIdPersona()));
+
+        BonificacionesTrabajador bonificacion = BonificacionesTrabajador.builder()
+                .tipoBonificacion(TiposBonificacion.valueOf(dto.getTipoBonificacion()))
+                .porcentajeBonificacion(dto.getPorcentajeBonificacion())
+                .fechaInicio(dto.getFechaInicio())
+                .fechaFin(dto.getFechaFin())
+                .anioFiscal(dto.getAnioFiscal())
+                .descripcion(dto.getDescripcion())
+                .personal(personal)
+                .build();
+
+        bonificacionService.validarBonificacion(bonificacion);
+
+        personal.getBonificaciones().add(bonificacion);
+        personalRepository.save(personal);
+        this.costeHoraService.calcularCosteHoraEconomico(personal.getEconomico());
+    }
+
+    @Override
     public Page<BonificacionesEmpleadoEconomicoDTO> obtenerBonificacionesEmpleadoPorEconomico(Long idEconomico, Pageable pageable) {
         Page<BonificacionesTrabajador> bonificacionesTrabajador = bonificacionesTrabajadorRepository.findBonificacionesTrabajadorsByIdEconomico(idEconomico,pageable);
         if (bonificacionesTrabajador != null && !bonificacionesTrabajador.isEmpty()) {
@@ -578,6 +608,10 @@ public class PersonalServiceImpl implements PersonalService {
                     .idBonificacionTrabajador(bonificaciones.getIdBonificacionTrabajador())
                     .tipoBonificacion(bonificaciones.getTipoBonificacion())
                     .porcentajeBonificacion(bonificaciones.getPorcentajeBonificacion())
+                    .fechaInicio(bonificaciones.getFechaInicio())
+                    .fechaFin(bonificaciones.getFechaFin())
+                    .anioFiscal(bonificaciones.getAnioFiscal())
+                    .descripcion(bonificaciones.getDescripcion())
                     .build());
         } else {
             return Page.empty();
@@ -600,6 +634,15 @@ public class PersonalServiceImpl implements PersonalService {
             case "tipoBonificacion":
                 bonificacionesTrabajador.setTipoBonificacion(TiposBonificacion.valueOf(actualizarBonificacionEmpleadoDTO.getValor().toString()));
                 break;
+            case "fechaInicio":
+                bonificacionesTrabajador.setFechaInicio(java.time.LocalDate.parse(actualizarBonificacionEmpleadoDTO.getValor().toString()));
+                break;
+            case "fechaFin":
+                bonificacionesTrabajador.setFechaFin(java.time.LocalDate.parse(actualizarBonificacionEmpleadoDTO.getValor().toString()));
+                break;
+            case "descripcion":
+                bonificacionesTrabajador.setDescripcion(actualizarBonificacionEmpleadoDTO.getValor().toString());
+                break;
             default:
                 throw new IllegalArgumentException("Campo actualizado no válido: " + actualizarBonificacionEmpleadoDTO.getCampoActualizado());
         }
@@ -615,11 +658,12 @@ public class PersonalServiceImpl implements PersonalService {
         Personal persona = bonificacionesTrabajador.getPersonal();
         try {
             if (persona != null) {
-                persona.setBonificacionesTrabajador(null);
-                this.costeHoraService.calcularCosteHoraEconomico(persona.getEconomico());
+                persona.getBonificaciones().remove(bonificacionesTrabajador);
                 personalRepository.save(persona);
+                this.costeHoraService.calcularCosteHoraEconomico(persona.getEconomico());
+            } else {
+                bonificacionesTrabajadorRepository.delete(bonificacionesTrabajador);
             }
-            bonificacionesTrabajadorRepository.delete(bonificacionesTrabajador);
         } catch (Exception e) {
             throw new RuntimeException("Error al eliminar la bonificación del empleado: " + e.getMessage(), e);
         }
@@ -647,16 +691,31 @@ public class PersonalServiceImpl implements PersonalService {
 
     private Page<ResumenCostePersonalDTO> getResumenCostePersonalDTOS(Page<Personal> personalList) {
         if (personalList != null && !personalList.isEmpty()) {
-            return personalList.map(persona -> ResumenCostePersonalDTO.builder()
+            return personalList.map(persona -> {
+                    var ch = persona.getCosteHoraPersonal();
+                    return ResumenCostePersonalDTO.builder()
                     .idPersonal(persona.getIdPersona())
                     .nombre(persona.getNombre())
                     .dni(persona.getDni())
-                    .idCosteHoraPersonal(persona.getCosteHoraPersonal().getId())
-                    .retribucionTotal(persona.getCosteHoraPersonal().getRetribucionTotal())
-                    .costeSS(persona.getCosteHoraPersonal().getCosteSS())
-                    .horasMaximas(persona.getCosteHoraPersonal().getHorasMaximas())
-                    .costeHora(persona.getCosteHoraPersonal().getCosteHora())
-                    .build());
+                    .idCosteHoraPersonal(ch.getId())
+                    .retribucionTotal(ch.getRetribucionTotal())
+                    .costeSS(ch.getCosteSS())
+                    .horasMaximas(ch.getHorasMaximas())
+                    .costeHora(ch.getCosteHora())
+                    .cuotaCC(ch.getCuotaCC())
+                    .cuotaATEP(ch.getCuotaATEP())
+                    .cuotaDesempleo(ch.getCuotaDesempleo())
+                    .cuotaFogasa(ch.getCuotaFogasa())
+                    .cuotaFP(ch.getCuotaFP())
+                    .cuotaMEI(ch.getCuotaMEI())
+                    .tipoATEPAplicado(ch.getTipoATEPAplicado())
+                    .origenTipoATEP(ch.getOrigenTipoATEP())
+                    .ssEmpresaBruta(ch.getSsEmpresaBruta())
+                    .ahorroBonificaciones(ch.getAhorroBonificaciones())
+                    .ahorroInvestigador(ch.getAhorroInvestigador())
+                    .ahorroOtrasBonificaciones(ch.getAhorroOtrasBonificaciones())
+                    .build();
+                    });
         } else {
             return Page.empty();
         }

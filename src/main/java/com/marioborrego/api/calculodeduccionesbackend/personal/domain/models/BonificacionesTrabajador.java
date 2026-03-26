@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Builder
 @Getter
@@ -18,10 +19,33 @@ public class BonificacionesTrabajador {
     private Long idBonificacionTrabajador;
 
     @Enumerated(value = EnumType.STRING)
+    @Column(nullable = false, length = 30)
     private TiposBonificacion tipoBonificacion;
 
+    @Column(nullable = false, precision = 5, scale = 2)
     private BigDecimal porcentajeBonificacion;
 
-    @OneToOne(mappedBy = "bonificacionesTrabajador")
+    @Column(nullable = false)
+    private LocalDate fechaInicio;
+
+    @Column(nullable = false)
+    private LocalDate fechaFin;
+
+    @Column(nullable = false)
+    private Integer anioFiscal;
+
+    @Column(length = 300)
+    private String descripcion;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDate fechaCreacion;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_personal", nullable = false)
     private Personal personal;
+
+    @PrePersist
+    protected void onCreate() {
+        this.fechaCreacion = LocalDate.now();
+    }
 }

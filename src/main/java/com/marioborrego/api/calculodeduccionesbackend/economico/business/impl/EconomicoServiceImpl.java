@@ -82,6 +82,7 @@ public class EconomicoServiceImpl implements EconomicoService {
                     .CNAE(Long.valueOf(crearEconomicoDTO.getCnae()))
                     .anualidad(crearEconomicoDTO.getAnualidad())
                     .esPyme(crearEconomicoDTO.getEsPyme())
+                    .selloPymeInnovadora(Boolean.TRUE.equals(crearEconomicoDTO.getSelloPymeInnovadora()))
                     .activo(true)
                     .build();
             Economico e =economicoRepository.save(economico);
@@ -111,6 +112,7 @@ public class EconomicoServiceImpl implements EconomicoService {
                     .cnae(economico.getCNAE())
                     .anualidad(economico.getAnualidad())
                     .esPyme(economico.isEsPyme())
+                    .selloPymeInnovadora(economico.isSelloPymeInnovadora())
                     .presentacionEmpresa(economico.getPresentacionEmpresa())
                     .descripcionIDI(economico.getDescripcionIDI())
                     .build();
@@ -133,6 +135,9 @@ public class EconomicoServiceImpl implements EconomicoService {
             economicoEntity.setUrlWeb(economico.getUrlWeb());
             economicoEntity.setCNAE(Long.valueOf(economico.getCnae()));
             economicoEntity.setEsPyme(economico.getEsPyme());
+            if (economico.getSelloPymeInnovadora() != null) {
+                economicoEntity.setSelloPymeInnovadora(economico.getSelloPymeInnovadora());
+            }
             economicoEntity.setPresentacionEmpresa(economico.getPresentacionEmpresa());
             economicoEntity.setDescripcionIDI(economico.getDescripcionIDI());
             economicoRepository.save(economicoEntity);

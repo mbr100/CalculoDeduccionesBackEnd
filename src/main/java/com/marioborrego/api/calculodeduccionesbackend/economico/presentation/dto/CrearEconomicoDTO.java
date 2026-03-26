@@ -72,4 +72,7 @@ public class CrearEconomicoDTO {
     @NotNull(message = "Debe indicarse si es Pyme o no")
     private Boolean esPyme;
 
+    @Builder.Default
+    private Boolean selloPymeInnovadora = false;
+
 }

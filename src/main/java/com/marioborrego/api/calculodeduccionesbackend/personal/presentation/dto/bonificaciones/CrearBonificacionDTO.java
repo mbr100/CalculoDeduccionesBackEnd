@@ -1,6 +1,5 @@
 package com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones;
 
-import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.enums.TiposBonificacion;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,12 +12,9 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class BonificacionesEmpleadoEconomicoDTO {
+public class CrearBonificacionDTO {
     private Long idPersona;
-    private String nombre;
-    private String dni;
-    private Long idBonificacionTrabajador;
-    private TiposBonificacion tipoBonificacion;
+    private String tipoBonificacion;
     private BigDecimal porcentajeBonificacion;
     private LocalDate fechaInicio;
     private LocalDate fechaFin;

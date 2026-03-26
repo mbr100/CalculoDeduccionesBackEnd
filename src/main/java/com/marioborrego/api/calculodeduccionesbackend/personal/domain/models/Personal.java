@@ -36,6 +36,9 @@ public class Personal {
     private boolean esPersonalInvestigador;
     private boolean esContratoIndefinido;
 
+    @Column(length = 2)
+    private String claveOcupacion;
+
     @ManyToOne
     @Builder.Default
     @JoinColumn(name = "id_economico", nullable = false)
@@ -61,10 +64,9 @@ public class Personal {
     @Builder.Default
     private List<BajaLaboral> bajasLaborales = new ArrayList<>();
 
-    @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "id_bonificaciones_trabajador")
+    @OneToMany(mappedBy = "personal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
-    private BonificacionesTrabajador bonificacionesTrabajador = new BonificacionesTrabajador();
+    private List<BonificacionesTrabajador> bonificaciones = new ArrayList<>();
 
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "id_coste_hora_personal")

@@ -22,4 +22,5 @@ public class ListarPersonalEconomicoDTO {
     private String titulacion4;
     private boolean esPersonalInvestigador;
     private boolean esContratoIndefinido;
+    private String claveOcupacion;
 }

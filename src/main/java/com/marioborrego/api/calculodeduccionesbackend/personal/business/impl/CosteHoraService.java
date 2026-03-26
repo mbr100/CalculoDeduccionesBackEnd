@@ -1,12 +1,16 @@
 package com.marioborrego.api.calculodeduccionesbackend.personal.business.impl;
 
-import com.marioborrego.api.calculodeduccionesbackend.cotizacion.domain.models.TipoCotizacion;
-import com.marioborrego.api.calculodeduccionesbackend.cotizacion.domain.repository.TipoCotizacionRepository;
+import com.marioborrego.api.calculodeduccionesbackend.cotizacion.domain.models.ClaveOcupacion;
+import com.marioborrego.api.calculodeduccionesbackend.cotizacion.domain.models.ConfiguracionAnualSS;
+import com.marioborrego.api.calculodeduccionesbackend.cotizacion.domain.models.TarifaPrimasCnae;
+import com.marioborrego.api.calculodeduccionesbackend.cotizacion.domain.repository.ClaveOcupacionRepository;
+import com.marioborrego.api.calculodeduccionesbackend.cotizacion.domain.repository.ConfiguracionAnualSSRepository;
+import com.marioborrego.api.calculodeduccionesbackend.cotizacion.domain.repository.TarifaPrimasCnaeRepository;
 import com.marioborrego.api.calculodeduccionesbackend.economico.domain.models.Economico;
-import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.BonificacionesTrabajador;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.CosteHoraPersonal;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.Personal;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.repository.*;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.BonificacionResultDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,21 +27,27 @@ public class CosteHoraService {
     private final RetribucionRepository retribucionRepository;
     private final BasesCotizacionRepository basesCotizacionRepository;
     private final HorasEmpleadoRepository horasEmpleadoRepository;
-    private final BonificacionesTrabajadorRepository bonificacionesTrabajadorRepository;
-    private final TipoCotizacionRepository tipoCotizacionRepository;
+    private final ConfiguracionAnualSSRepository configuracionAnualSSRepository;
+    private final TarifaPrimasCnaeRepository tarifaPrimasCnaeRepository;
+    private final ClaveOcupacionRepository claveOcupacionRepository;
+    private final BonificacionService bonificacionService;
 
     private final Logger logger = LoggerFactory.getLogger(CosteHoraService.class);
 
     public CosteHoraService(PersonalRepository personalRepository, RetribucionRepository retribucionRepository,
                             BasesCotizacionRepository basesCotizacionRepository, HorasEmpleadoRepository horasEmpleadoRepository,
-                            BonificacionesTrabajadorRepository bonificacionesTrabajadorRepository,
-                            TipoCotizacionRepository tipoCotizacionRepository) {
+                            ConfiguracionAnualSSRepository configuracionAnualSSRepository,
+                            TarifaPrimasCnaeRepository tarifaPrimasCnaeRepository,
+                            ClaveOcupacionRepository claveOcupacionRepository,
+                            BonificacionService bonificacionService) {
         this.personalRepository = personalRepository;
         this.retribucionRepository = retribucionRepository;
         this.basesCotizacionRepository = basesCotizacionRepository;
         this.horasEmpleadoRepository = horasEmpleadoRepository;
-        this.bonificacionesTrabajadorRepository = bonificacionesTrabajadorRepository;
-        this.tipoCotizacionRepository = tipoCotizacionRepository;
+        this.configuracionAnualSSRepository = configuracionAnualSSRepository;
+        this.tarifaPrimasCnaeRepository = tarifaPrimasCnaeRepository;
+        this.claveOcupacionRepository = claveOcupacionRepository;
+        this.bonificacionService = bonificacionService;
     }
 
     public void calcularCosteHoraEconomico(Economico economico) {
@@ -70,46 +80,91 @@ public class CosteHoraService {
                         .orElseThrow(() -> new RuntimeException("No se encontró la base de cotización para el personal con ID: " + personal.getIdPersona()))
                         .getBasesCotizacionContingenciasComunesAnual());
 
-        // 4. Porcentajes desde TipoCotizacion (por CNAE + anualidad)
-        TipoCotizacion cotizacion = tipoCotizacionRepository.findByCnaeAndAnualidad(cnae, anualidad)
-                .orElseThrow(() -> new RuntimeException("No se encontró tipo de cotización para CNAE " + cnae + " y anualidad " + anualidad));
+        // 4. Obtener configuración anual SS (tipos comunes a todos los CNAEs)
+        ConfiguracionAnualSS config = configuracionAnualSSRepository.findByAnio(anualidad)
+                .orElseThrow(() -> new RuntimeException("No se encontró configuración SS para el año " + anualidad));
 
-        BigDecimal pctCC = cotizacion.getContingenciasComunes();
-        BigDecimal pctATEP = cotizacion.getAccidentesTrabajoTotal();
-        BigDecimal pctFOGASA = cotizacion.getFogasa();
-        BigDecimal pctFP = cotizacion.getFormacionProfesional();
-        BigDecimal pctMEI = cotizacion.getMei();
+        BigDecimal pctCC = config.getCcEmpresa();
+        BigDecimal pctFOGASA = config.getFogasa();
+        BigDecimal pctFP = config.getFpEmpresa();
+        BigDecimal pctMEI = config.getMeiEmpresa();
 
-        // 5. Desempleo según tipo de contrato del trabajador
-        BigDecimal pctDesempleo = personal.isEsContratoIndefinido()
-                ? cotizacion.getDesempleoIndefinido()
-                : cotizacion.getDesempleoTemporal();
-
-        // 6. SS empresa = baseCCAnual × (CC + AT/EP + desempleo + FOGASA + FP + MEI) / 100
-        BigDecimal porcentajeTotal = pctCC.add(pctATEP).add(pctDesempleo).add(pctFOGASA).add(pctFP).add(pctMEI);
-        BigDecimal ssEmpresa = baseCCAnual.multiply(porcentajeTotal).divide(CIEN, SCALE, RoundingMode.HALF_UP);
-
-        logger.info("Personal ID {}: porcentaje total SS = {}%, SS empresa = {}", personal.getIdPersona(), porcentajeTotal, ssEmpresa);
-
-        // 7. Bonificación: descuento sobre cuota de CC empresa
-        BonificacionesTrabajador bonificacion = personal.getBonificacionesTrabajador();
-        if (bonificacion != null && bonificacion.getPorcentajeBonificacion() != null) {
-            BigDecimal pctBonificacion = bonificacion.getPorcentajeBonificacion();
-
-            // descuento = baseCCAnual × (CC/100) × (bonificacion/100)
-            BigDecimal cuotaCC = baseCCAnual.multiply(pctCC).divide(CIEN, SCALE, RoundingMode.HALF_UP);
-            BigDecimal descuento = cuotaCC.multiply(pctBonificacion).divide(CIEN, SCALE, RoundingMode.HALF_UP);
-
-            ssEmpresa = ssEmpresa.subtract(descuento);
-            logger.info("Personal ID {}: bonificación {}% sobre cuota CC, descuento = {}, SS final = {}",
-                    personal.getIdPersona(), pctBonificacion, descuento, ssEmpresa);
+        // 5. AT/EP: si el trabajador tiene clave de ocupación (Cuadro II), usar ese tipo en vez del CNAE
+        BigDecimal pctATEP;
+        String origenTipoATEP;
+        String claveOcupacion = personal.getClaveOcupacion();
+        if (claveOcupacion != null && !claveOcupacion.isBlank()) {
+            ClaveOcupacion ocupacion = claveOcupacionRepository.findByClaveAndActivaTrue(claveOcupacion.toLowerCase())
+                    .orElseThrow(() -> new RuntimeException("No se encontró clave de ocupación activa '" + claveOcupacion + "'"));
+            pctATEP = ocupacion.getTipoTotal();
+            origenTipoATEP = "CUADRO_II_CLAVE_" + claveOcupacion.toUpperCase();
+            logger.info("Personal ID {}: usando tipo AT/EP del Cuadro II (clave '{}') = {}%", personal.getIdPersona(), claveOcupacion, pctATEP);
+        } else {
+            TarifaPrimasCnae tarifa = tarifaPrimasCnaeRepository.findByCnaeAndAnio(cnae, anualidad)
+                    .orElseThrow(() -> new RuntimeException("No se encontró tarifa de primas para CNAE " + cnae + " y año " + anualidad));
+            pctATEP = tarifa.getTipoTotal();
+            origenTipoATEP = "CUADRO_I_CNAE_" + cnae;
         }
 
-        ch.setCosteSS(ssEmpresa);
+        // 6. Desempleo según tipo de contrato del trabajador
+        BigDecimal pctDesempleo = personal.isEsContratoIndefinido()
+                ? config.getDesempleoEmpresaIndefinido()
+                : config.getDesempleoEmpresaTemporal();
 
-        // 8. Coste/hora = (retribución + SS empresa) / horas anuales
+        // 7. Calcular cada cuota SS empresa por separado
+        BigDecimal baseCPAnual = baseCCAnual;
+
+        BigDecimal cuotaCC = baseCCAnual.multiply(pctCC).divide(CIEN, SCALE, RoundingMode.HALF_UP);
+        BigDecimal cuotaATEP = baseCPAnual.multiply(pctATEP).divide(CIEN, SCALE, RoundingMode.HALF_UP);
+        BigDecimal cuotaDesempleo = baseCPAnual.multiply(pctDesempleo).divide(CIEN, SCALE, RoundingMode.HALF_UP);
+        BigDecimal cuotaFogasa = baseCPAnual.multiply(pctFOGASA).divide(CIEN, SCALE, RoundingMode.HALF_UP);
+        BigDecimal cuotaFP = baseCPAnual.multiply(pctFP).divide(CIEN, SCALE, RoundingMode.HALF_UP);
+        BigDecimal cuotaMEI = baseCCAnual.multiply(pctMEI).divide(CIEN, SCALE, RoundingMode.HALF_UP);
+
+        BigDecimal ssEmpresaBruta = cuotaCC.add(cuotaATEP).add(cuotaDesempleo).add(cuotaFogasa).add(cuotaFP).add(cuotaMEI);
+
+        logger.info("Personal ID {}: SS empresa bruta = {} (CC={}, ATEP={}, Desemp={}, FOGASA={}, FP={}, MEI={})",
+                personal.getIdPersona(), ssEmpresaBruta, cuotaCC, cuotaATEP, cuotaDesempleo, cuotaFogasa, cuotaFP, cuotaMEI);
+
+        // 8. Calcular ahorro por bonificaciones (período-based)
+        BonificacionResultDTO bonificaciones = bonificacionService.calcularAhorroBonificaciones(
+                personal.getIdPersona(), cuotaCC, anualidad);
+
+        BigDecimal ahorroBonificaciones = bonificaciones.getAhorroTotalAnual();
+
+        // 9. SS empresa neta (coste real soportado)
+        BigDecimal ssEmpresaNeta = ssEmpresaBruta.subtract(ahorroBonificaciones);
+        if (ssEmpresaNeta.compareTo(BigDecimal.ZERO) < 0) {
+            ssEmpresaNeta = BigDecimal.ZERO;
+        }
+
+        // Aplicar descuento a la cuota CC para el desglose
+        BigDecimal cuotaCCNeta = cuotaCC.subtract(ahorroBonificaciones);
+        if (cuotaCCNeta.compareTo(BigDecimal.ZERO) < 0) {
+            cuotaCCNeta = BigDecimal.ZERO;
+        }
+
+        logger.info("Personal ID {}: bonificaciones ahorro = {}, SS neta = {}",
+                personal.getIdPersona(), ahorroBonificaciones, ssEmpresaNeta);
+
+        // Guardar desglose y trazabilidad
+        ch.setCuotaCC(cuotaCCNeta);
+        ch.setCuotaATEP(cuotaATEP);
+        ch.setCuotaDesempleo(cuotaDesempleo);
+        ch.setCuotaFogasa(cuotaFogasa);
+        ch.setCuotaFP(cuotaFP);
+        ch.setCuotaMEI(cuotaMEI);
+        ch.setTipoATEPAplicado(pctATEP);
+        ch.setOrigenTipoATEP(origenTipoATEP);
+        ch.setSsEmpresaBruta(ssEmpresaBruta);
+        ch.setAhorroBonificaciones(ahorroBonificaciones);
+        ch.setAhorroInvestigador(bonificaciones.getAhorroInvestigador());
+        ch.setAhorroOtrasBonificaciones(bonificaciones.getAhorroOtrasBonificaciones());
+        ch.setCosteSS(ssEmpresaNeta);
+
+        // 10. Coste/hora = (retribución + SS empresa neta) / horas anuales
         if (horasAnuales.compareTo(BigDecimal.ZERO) > 0) {
-            ch.setCosteHora(retribucionAnual.add(ssEmpresa).divide(horasAnuales, SCALE, RoundingMode.HALF_UP));
+            ch.setCosteHora(retribucionAnual.add(ssEmpresaNeta).divide(horasAnuales, SCALE, RoundingMode.HALF_UP));
         } else {
             ch.setCosteHora(BigDecimal.ZERO);
         }

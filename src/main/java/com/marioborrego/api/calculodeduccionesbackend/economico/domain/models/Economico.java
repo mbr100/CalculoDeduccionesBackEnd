@@ -32,6 +32,9 @@ public class Economico {
     private Long CNAE;
     private Long anualidad;
     private boolean esPyme;
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean selloPymeInnovadora = false;
     private boolean activo;
 
     @Column(columnDefinition = "TEXT")
