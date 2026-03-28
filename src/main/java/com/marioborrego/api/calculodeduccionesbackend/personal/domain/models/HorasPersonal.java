@@ -8,6 +8,7 @@ import lombok.*;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Builder
 @Getter
@@ -34,6 +35,7 @@ public class HorasPersonal {
     private Personal personal;
 
     @OneToMany(mappedBy = "horasPersonal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
     private List<BajaLaboral> bajas = new ArrayList<>();
 
     /**
@@ -48,8 +50,6 @@ public class HorasPersonal {
      */
     private double getHorasTeoricas() {
         if (horasConvenioAnual == null || horasConvenioAnual <= 0) return 0;
-        System.out.printf("horasConvenioAnual: %d, getDiasAltaEjercicio: %d%n", horasConvenioAnual, getDiasAltaEjercicio());
-        System.out.printf("horasTeoricas: %f%n", getDiasAltaEjercicio() * (horasConvenioAnual / 365.0));
         return getDiasAltaEjercicio() * (horasConvenioAnual / 365.0);
     }
 
@@ -57,8 +57,15 @@ public class HorasPersonal {
      * Calcula las horas de baja dentro del ejercicio.
      */
     private double getHorasDeBaja() {
+        if (bajas == null || bajas.isEmpty()) {
+            return 0.0;
+        }
+
         return bajas.stream()
-                .mapToDouble(BajaLaboral::getHorasDeBaja)
+                .filter(Objects::nonNull)
+                .map(BajaLaboral::getHorasDeBaja)
+                .filter(Objects::nonNull)
+                .mapToDouble(Long::doubleValue)
                 .sum();
     }
 
@@ -70,19 +77,19 @@ public class HorasPersonal {
     @PreUpdate
     private void actualizarHorasMaximas() {
         long horasEfectivas = (long) getHorasEfectivas();
-        if (horasEfectivas > horasConvenioAnual) {
+        if (horasConvenioAnual != null && horasEfectivas > horasConvenioAnual) {
             this.horasMaximasAnuales = horasConvenioAnual;
         } else {
-            this.horasMaximasAnuales = (long) getHorasEfectivas();
+            this.horasMaximasAnuales = horasEfectivas;
         }
     }
 
     public void actualizarHorasMaximasAnuales() {
         long horasEfectivas = (long) getHorasEfectivas();
-        if (horasEfectivas > horasConvenioAnual) {
+        if (horasConvenioAnual != null && horasEfectivas > horasConvenioAnual) {
             this.horasMaximasAnuales = horasConvenioAnual;
         } else {
-            this.horasMaximasAnuales = (long) getHorasEfectivas();
+            this.horasMaximasAnuales = horasEfectivas;
         }
     }
 }

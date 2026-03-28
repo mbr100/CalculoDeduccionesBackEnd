@@ -14,6 +14,9 @@ public class ResumenCostePersonalDTO {
     private Long idPersonal;
     private String nombre;
     private String dni;
+    private String puesto;
+    private String titulacion;
+    private String departamento;
     private Long idCosteHoraPersonal;
     private BigDecimal retribucionTotal;
     private BigDecimal costeSS;

@@ -68,6 +68,10 @@ public class Personal {
     @Builder.Default
     private List<BonificacionesTrabajador> bonificaciones = new ArrayList<>();
 
+    @OneToMany(mappedBy = "personal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<PeriodoContrato> periodosContrato = new ArrayList<>();
+
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "id_coste_hora_personal")
     @Builder.Default

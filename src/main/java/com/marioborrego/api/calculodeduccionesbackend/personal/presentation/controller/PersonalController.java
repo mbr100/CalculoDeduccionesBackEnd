@@ -1,6 +1,7 @@
 package com.marioborrego.api.calculodeduccionesbackend.personal.presentation.controller;
 
 import com.marioborrego.api.calculodeduccionesbackend.configuration.DTO.PageResponse;
+import com.marioborrego.api.calculodeduccionesbackend.personal.business.impl.PeriodoContratoService;
 import com.marioborrego.api.calculodeduccionesbackend.personal.business.interfaces.PersonalService;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.ActualizacionDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.ActualizarAltaEjercicioDTO;
@@ -14,6 +15,10 @@ import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.ActualizarBonificacionDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.BonificacionesEmpleadoEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.CrearBonificacionDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.periodosContrato.ActualizarPeriodoContratoDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.periodosContrato.ClaveContratoDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.periodosContrato.CrearPeriodoContratoDTO;
+import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.periodosContrato.PeriodoContratoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.ListarPersonalEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.personal.PersonalEconomicoDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.resumenCostes.ResumenCostePersonalDTO;
@@ -42,11 +47,14 @@ public class PersonalController {
     private final Logger log = LoggerFactory.getLogger(PersonalController.class);
     private final PersonalService personalService;
     private final com.marioborrego.api.calculodeduccionesbackend.personal.business.impl.ValidacionImputacionService validacionImputacionService;
+    private final PeriodoContratoService periodoContratoService;
 
     public PersonalController(PersonalService personalService,
-                              com.marioborrego.api.calculodeduccionesbackend.personal.business.impl.ValidacionImputacionService validacionImputacionService) {
+                              com.marioborrego.api.calculodeduccionesbackend.personal.business.impl.ValidacionImputacionService validacionImputacionService,
+                              PeriodoContratoService periodoContratoService) {
         this.personalService = personalService;
         this.validacionImputacionService = validacionImputacionService;
+        this.periodoContratoService = periodoContratoService;
     }
 
     @Operation(summary = "Obtener listado de personal económico", description = "Permite obtener un listado de personal económico registrado en el sistema para un económico específico.")
@@ -507,6 +515,80 @@ public class PersonalController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    // ====== PERÍODOS DE CONTRATO ======
+
+    @Operation(summary = "Obtener períodos de contrato por económico")
+    @GetMapping("/{idEconomico}/periodos-contrato")
+    public ResponseEntity<Page<PeriodoContratoDTO>> obtenerPeriodosContrato(
+            @PageableDefault(size = 20) Pageable pageable, @PathVariable Long idEconomico) {
+        log.info("Petición para obtener períodos de contrato del económico con ID: {}", idEconomico);
+        try {
+            Page<PeriodoContratoDTO> periodos = periodoContratoService.obtenerPeriodosPorEconomico(idEconomico, pageable);
+            return ResponseEntity.ok(periodos);
+        } catch (Exception e) {
+            log.error("Error al obtener períodos de contrato: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Crear período de contrato")
+    @PostMapping("/periodo-contrato")
+    public ResponseEntity<?> crearPeriodoContrato(@RequestBody CrearPeriodoContratoDTO dto) {
+        log.info("Petición para crear período de contrato para personal ID: {}", dto.getIdPersona());
+        try {
+            PeriodoContratoDTO creado = periodoContratoService.crearPeriodo(dto);
+            return ResponseEntity.status(HttpStatus.CREATED).body(creado);
+        } catch (IllegalArgumentException e) {
+            log.warn("Error de validación al crear período: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Map.of("mensaje", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error al crear período de contrato: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Actualizar período de contrato")
+    @PutMapping("/periodo-contrato")
+    public ResponseEntity<?> actualizarPeriodoContrato(@RequestBody ActualizarPeriodoContratoDTO dto) {
+        log.info("Petición para actualizar período de contrato ID: {}", dto.getId());
+        try {
+            PeriodoContratoDTO actualizado = periodoContratoService.actualizarPeriodo(dto);
+            return ResponseEntity.ok(actualizado);
+        } catch (IllegalArgumentException e) {
+            log.warn("Error de validación al actualizar período: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Map.of("mensaje", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error al actualizar período de contrato: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Eliminar período de contrato")
+    @DeleteMapping("/periodo-contrato/{idPeriodo}")
+    public ResponseEntity<Void> eliminarPeriodoContrato(@PathVariable Long idPeriodo) {
+        log.info("Petición para eliminar período de contrato ID: {}", idPeriodo);
+        try {
+            periodoContratoService.eliminarPeriodo(idPeriodo);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Error al eliminar período de contrato: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Obtener claves de contrato vigentes")
+    @GetMapping("/claves-contrato")
+    public ResponseEntity<List<ClaveContratoDTO>> obtenerClavesContrato() {
+        try {
+            return ResponseEntity.ok(periodoContratoService.obtenerClavesContratoVigentes());
+        } catch (Exception e) {
+            log.error("Error al obtener claves de contrato: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    // ====== RESUMEN COSTE ======
 
     @Operation(summary = "Obtener resumen del coste de personal", description = "Permite obtener un resumen del coste de personal para un económico específico.")
     @ApiResponses({

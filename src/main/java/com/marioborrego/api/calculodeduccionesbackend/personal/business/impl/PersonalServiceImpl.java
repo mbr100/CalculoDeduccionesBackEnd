@@ -697,6 +697,9 @@ public class PersonalServiceImpl implements PersonalService {
                     .idPersonal(persona.getIdPersona())
                     .nombre(persona.getNombre())
                     .dni(persona.getDni())
+                    .puesto(persona.getPuesto())
+                    .titulacion(obtenerTitulacionPrincipal(persona))
+                    .departamento(persona.getDepartamento())
                     .idCosteHoraPersonal(ch.getId())
                     .retribucionTotal(ch.getRetribucionTotal())
                     .costeSS(ch.getCosteSS())
@@ -719,6 +722,22 @@ public class PersonalServiceImpl implements PersonalService {
         } else {
             return Page.empty();
         }
+    }
+
+    private String obtenerTitulacionPrincipal(Personal persona) {
+        if (persona.getTitulacion1() != null && !persona.getTitulacion1().isBlank()) {
+            return persona.getTitulacion1();
+        }
+        if (persona.getTitulacion2() != null && !persona.getTitulacion2().isBlank()) {
+            return persona.getTitulacion2();
+        }
+        if (persona.getTitulacion3() != null && !persona.getTitulacion3().isBlank()) {
+            return persona.getTitulacion3();
+        }
+        if (persona.getTitulacion4() != null && !persona.getTitulacion4().isBlank()) {
+            return persona.getTitulacion4();
+        }
+        return null;
     }
 
     private BigDecimal convertirABigDecimal(Object valor) {
