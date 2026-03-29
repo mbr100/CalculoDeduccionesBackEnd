@@ -4,8 +4,6 @@ import com.marioborrego.api.calculodeduccionesbackend.configuration.DTO.PageResp
 import com.marioborrego.api.calculodeduccionesbackend.personal.business.impl.PeriodoContratoService;
 import com.marioborrego.api.calculodeduccionesbackend.personal.business.interfaces.PersonalService;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.ActualizacionDTO;
-import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.ActualizarAltaEjercicioDTO;
-import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.AltaEjercicioDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bbcc.ActualizarBbccPersonalDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bbcc.BbccPersonalDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bajasLaborales.ActualizarBajaLaboralDTO;
@@ -34,7 +32,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -48,13 +48,16 @@ public class PersonalController {
     private final PersonalService personalService;
     private final com.marioborrego.api.calculodeduccionesbackend.personal.business.impl.ValidacionImputacionService validacionImputacionService;
     private final PeriodoContratoService periodoContratoService;
+    private final com.marioborrego.api.calculodeduccionesbackend.personal.business.impl.CosteHoraExcelService costeHoraExcelService;
 
     public PersonalController(PersonalService personalService,
                               com.marioborrego.api.calculodeduccionesbackend.personal.business.impl.ValidacionImputacionService validacionImputacionService,
-                              PeriodoContratoService periodoContratoService) {
+                              PeriodoContratoService periodoContratoService,
+                              com.marioborrego.api.calculodeduccionesbackend.personal.business.impl.CosteHoraExcelService costeHoraExcelService) {
         this.personalService = personalService;
         this.validacionImputacionService = validacionImputacionService;
         this.periodoContratoService = periodoContratoService;
+        this.costeHoraExcelService = costeHoraExcelService;
     }
 
     @Operation(summary = "Obtener listado de personal económico", description = "Permite obtener un listado de personal económico registrado en el sistema para un económico específico.")
@@ -610,6 +613,29 @@ public class PersonalController {
             return ResponseEntity.ok(java.util.Map.of("bloqueado", false));
         } catch (Exception e) {
             log.error("Error al validar imputación: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Exportar coste/hora a Excel", description = "Genera un fichero Excel con el detalle de coste/hora de todo el personal del económico.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Excel generado correctamente"),
+            @ApiResponse(responseCode = "500", description = "Error al generar el Excel")
+    })
+    @GetMapping("/{idEconomico}/exportar-coste-hora")
+    public ResponseEntity<byte[]> exportarCosteHoraExcel(@PathVariable Long idEconomico) {
+        log.info("Exportando coste/hora a Excel para el económico con ID: {}", idEconomico);
+        try {
+            byte[] excelBytes = costeHoraExcelService.generarExcel(idEconomico);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            headers.setContentDispositionFormData("attachment", "coste_hora_" + idEconomico + ".xlsx");
+            headers.setContentLength(excelBytes.length);
+
+            return new ResponseEntity<>(excelBytes, headers, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error al exportar coste/hora a Excel: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

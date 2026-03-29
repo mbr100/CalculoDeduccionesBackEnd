@@ -13,5 +13,5 @@ public class FilaAsignacionDTO {
     private Long idPersonal;
     private String nombreCompleto;
     private List<Double> horas;   // una celda por proyecto, en el mismo orden que "proyectos"
-    private Long horasMaximas;
+    private Double horasEfectivas;
 }

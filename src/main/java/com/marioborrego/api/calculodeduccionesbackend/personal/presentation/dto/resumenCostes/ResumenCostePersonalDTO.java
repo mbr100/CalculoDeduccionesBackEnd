@@ -20,6 +20,8 @@ public class ResumenCostePersonalDTO {
     private Long idCosteHoraPersonal;
     private BigDecimal retribucionTotal;
     private BigDecimal costeSS;
+    private BigDecimal horasAlta;
+    // Campo legado mantenido por compatibilidad con clientes actuales.
     private BigDecimal horasMaximas;
     private BigDecimal horasEfectivas;
     private BigDecimal horasBaja;

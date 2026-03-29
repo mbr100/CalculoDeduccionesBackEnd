@@ -150,11 +150,15 @@ public class ProyectoServiceImpl implements ProyectoService {
                                     .findFirst()
                                     .orElse(0.0)
                             ).toList();
+                    Double horasEfectivas = persona.getCosteHoraPersonal() != null
+                            && persona.getCosteHoraPersonal().getHorasEfectivas() != null
+                            ? persona.getCosteHoraPersonal().getHorasEfectivas().doubleValue()
+                            : 0.0;
                     return FilaAsignacionDTO.builder()
                             .idPersonal(persona.getIdPersona())
                             .nombreCompleto(persona.getNombre() + " " + persona.getApellidos())
                             .horas(horas)
-                            .horasMaximas(persona.getHorasPersonal().getHorasMaximasAnuales())
+                            .horasEfectivas(horasEfectivas)
                             .build();
                 })
                 .toList();

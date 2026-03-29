@@ -255,15 +255,15 @@ public class CosteHoraService {
         ch.setAhorroOtrasBonificaciones(ahorroOtrasBonificaciones);
         ch.setCosteSS(ssEmpresaNeta);
 
-        // PASO 9: Coste/hora
-        if (totalHorasEfectivas.compareTo(BigDecimal.ZERO) > 0) {
-            ch.setCosteHora(retribucionAnual.add(ssEmpresaNeta).divide(totalHorasEfectivas, 2, RoundingMode.HALF_UP));
+        // PASO 9: Coste/hora (denominador = horas de periodos de alta)
+        if (totalHorasTrabajadas.compareTo(BigDecimal.ZERO) > 0) {
+            ch.setCosteHora(retribucionAnual.add(ssEmpresaNeta).divide(totalHorasTrabajadas, 2, RoundingMode.HALF_UP));
         } else {
             ch.setCosteHora(BigDecimal.ZERO);
         }
 
-        logger.info("Personal ID {} (períodos): costeHora={}, retrib={}, SS_neta={}, horas={}",
-                personal.getIdPersona(), ch.getCosteHora(), retribucionAnual, ssEmpresaNeta, totalHorasEfectivas);
+        logger.info("Personal ID {} (períodos): costeHora={}, retrib={}, SS_neta={}, horasAlta={}, horasEfectivas={}",
+                personal.getIdPersona(), ch.getCosteHora(), retribucionAnual, ssEmpresaNeta, totalHorasTrabajadas, totalHorasEfectivas);
     }
 
     private BonificacionResultDTO calcularBonificacionesSobreTramos(List<BonificacionesTrabajador> bonificaciones,

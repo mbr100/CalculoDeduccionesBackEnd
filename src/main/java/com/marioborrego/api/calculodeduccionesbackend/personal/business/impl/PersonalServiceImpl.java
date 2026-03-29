@@ -5,12 +5,9 @@ import com.marioborrego.api.calculodeduccionesbackend.economico.domain.repositor
 import com.marioborrego.api.calculodeduccionesbackend.helper.ValoresDefecto;
 import com.marioborrego.api.calculodeduccionesbackend.personal.business.interfaces.PersonalService;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.*;
-import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.enums.NaturalezaContrato;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.enums.TiposBonificacion;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.repository.*;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.ActualizacionDTO;
-import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.ActualizarAltaEjercicioDTO;
-import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.AltaEjercicioDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bbcc.ActualizarBbccPersonalDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bbcc.BbccPersonalDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bajasLaborales.ActualizarBajaLaboralDTO;
@@ -38,7 +35,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -56,18 +52,15 @@ public class PersonalServiceImpl implements PersonalService {
     private final BonificacionesTrabajadorRepository bonificacionesTrabajadorRepository;
     private final CosteHoraService costeHoraService;
     private final BonificacionService bonificacionService;
-    private final PeriodoContratoRepository periodoContratoRepository;
     private final com.marioborrego.api.calculodeduccionesbackend.proyecto.domain.repository.ProyectoPersonalRepository proyectoPersonalRepository;
 
     private final Logger logger = LoggerFactory.getLogger(PersonalServiceImpl.class);
-
 
 
     public PersonalServiceImpl(PersonalRepository personalRepository, EconomicoRepository economicoRepository, RetribucionRepository retribucionRepository,
                                BasesCotizacionRepository basesCotizacionRepository, HorasEmpleadoRepository horasEmpleadoRepository,
                                BajaLaboralRepository bajaLaboralRepository, BonificacionesTrabajadorRepository bonificacionesTrabajadorRepository,
                                CosteHoraService costeHoraService, BonificacionService bonificacionService,
-                               PeriodoContratoRepository periodoContratoRepository,
                                com.marioborrego.api.calculodeduccionesbackend.proyecto.domain.repository.ProyectoPersonalRepository proyectoPersonalRepository) {
         this.bonificacionesTrabajadorRepository = bonificacionesTrabajadorRepository;
         this.basesCotizacionRepository = basesCotizacionRepository;
@@ -78,7 +71,6 @@ public class PersonalServiceImpl implements PersonalService {
         this.bajaLaboralRepository = bajaLaboralRepository;
         this.costeHoraService = costeHoraService;
         this.bonificacionService = bonificacionService;
-        this.periodoContratoRepository = periodoContratoRepository;
         this.proyectoPersonalRepository = proyectoPersonalRepository;
     }
 
@@ -401,7 +393,6 @@ public class PersonalServiceImpl implements PersonalService {
         }
         BasesCotizacion basesCotizacion = basesCotizacionRepository.findById(actualizarBbccPersonalDTO.getIdBbccPersonal())
                 .orElseThrow(() -> new IllegalArgumentException("No existen bases de cotización con el ID proporcionado."));
-        this.costeHoraService.calcularCosteHoraEconomico(basesCotizacion.getPersona().getEconomico());
         switch (actualizarBbccPersonalDTO.getCampoActualizado()) {
             case "basesCotizacionContingenciasComunesEnero":
                 basesCotizacion.setBasesCotizacionContingenciasComunesEnero(actualizarBbccPersonalDTO.getValor().longValue());
@@ -444,6 +435,7 @@ public class PersonalServiceImpl implements PersonalService {
         }
         try {
             basesCotizacionRepository.save(basesCotizacion);
+            this.costeHoraService.calcularCosteHoraEconomico(basesCotizacion.getPersona().getEconomico());
         } catch (Exception e) {
             throw new RuntimeException("Error al actualizar las bases de cotización del personal: " + e.getMessage(), e);
         }
@@ -598,8 +590,6 @@ public class PersonalServiceImpl implements PersonalService {
         BajaLaboral bajaLaboral = bajaLaboralRepository.findById(actualizarBajaLaboralDTO.getIdBajaLaboral())
                 .orElseThrow(() -> new IllegalArgumentException("No existe una baja laboral con el ID proporcionado."));
 
-        this.costeHoraService.calcularCosteHoraEconomico(bajaLaboral.getPersonal().getEconomico());
-
         switch (actualizarBajaLaboralDTO.getCampoActualizado()) {
             case "fechaInicio":
                 bajaLaboral.setFechaInicio(actualizarBajaLaboralDTO.getValor());
@@ -613,6 +603,7 @@ public class PersonalServiceImpl implements PersonalService {
 
         try {
             bajaLaboralRepository.save(bajaLaboral);
+            this.costeHoraService.calcularCosteHoraEconomico(bajaLaboral.getPersonal().getEconomico());
         } catch (Exception e) {
             throw new RuntimeException("Error al actualizar la baja laboral: " + e.getMessage(), e);
         }
@@ -668,8 +659,6 @@ public class PersonalServiceImpl implements PersonalService {
                 .orElseThrow(() -> new IllegalArgumentException("No existe la bonificación con ID: "
                         + actualizarBonificacionEmpleadoDTO.getIdBonificacionTrabajador()));
 
-        this.costeHoraService.calcularCosteHoraEconomico(bonificacionesTrabajador.getPersonal().getEconomico());
-
         switch (actualizarBonificacionEmpleadoDTO.getCampoActualizado()) {
             case "porcentajeBonificacion":
                 bonificacionesTrabajador.setPorcentajeBonificacion(convertirABigDecimal(actualizarBonificacionEmpleadoDTO.getValor()));
@@ -690,6 +679,7 @@ public class PersonalServiceImpl implements PersonalService {
                 throw new IllegalArgumentException("Campo actualizado no válido: " + actualizarBonificacionEmpleadoDTO.getCampoActualizado());
         }
         bonificacionesTrabajadorRepository.save(bonificacionesTrabajador);
+        this.costeHoraService.calcularCosteHoraEconomico(bonificacionesTrabajador.getPersonal().getEconomico());
     }
 
     @Override
@@ -717,8 +707,7 @@ public class PersonalServiceImpl implements PersonalService {
         if (idEconomico<= 0) {
             throw new IllegalArgumentException("El ID del económico no puede ser nulo o menor o igual a cero.");
         }
-        Page<Personal> personalList = personalRepository.findPersonalByeconomicoId(idEconomico, pageable);
-        return getResumenCostePersonalDTOS(personalList);
+        return actualizarCosteHoraPersonal(idEconomico, pageable);
     }
 
     @Override
@@ -746,6 +735,7 @@ public class PersonalServiceImpl implements PersonalService {
                     .idCosteHoraPersonal(ch.getId())
                     .retribucionTotal(ch.getRetribucionTotal())
                     .costeSS(ch.getCosteSS())
+                    .horasAlta(ch.getHorasMaximas())
                     .horasMaximas(ch.getHorasMaximas())
                     .horasEfectivas(ch.getHorasEfectivas())
                     .horasBaja(ch.getHorasBaja())
