@@ -272,56 +272,6 @@ public class PersonalController {
         }
     }
 
-    @Operation(summary = "Obtener listado de personal con los datos alta ejercicio", description = "Permite obtener un listado de personal con los datos alta ejercicio para un económico específico.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Listado de personal con datos alta ejercicio obtenido correctamente"),
-            @ApiResponse(responseCode = "204", description = "No se encontró personal con datos alta ejercicio para el ID proporcionado"),
-            @ApiResponse(responseCode = "500", description = "Error al obtener el listado de personal con datos alta ejercicio")
-    })
-    @GetMapping("/{idEconomico}/alta-ejercicio")
-    public ResponseEntity<Page<AltaEjercicioDTO>> listadoDePersonalAltaEjercicio(@PageableDefault(size = 20) Pageable pageable, @PathVariable Long idEconomico) {
-        log.info("Petición para obtener el listado de alta de personal económico: {}", idEconomico);
-        if (idEconomico<0){
-            throw new IDEconomicoException("El ID económico no es válido: " + idEconomico);
-        }
-        try {
-            Page<AltaEjercicioDTO> listado = personalService.obtenerTodoPersonalAltaEjercicio(idEconomico, pageable);
-            if (listado == null || listado.isEmpty()) {
-                log.warn("No se encontró listado de alta personal económico para el ID: {}", idEconomico);
-                return ResponseEntity.noContent().build();
-            }
-            log.info("Listado de alta  de personal económico obtenido correctamente: {}", listado.getTotalElements());
-            return ResponseEntity.ok(listado);
-        } catch (Exception e) {
-            log.error("Error al obtener el listado de alta  de personal económico: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @Operation(summary = "Actualizar alta ejercicio del personal", description = "Permite actualizar el alta ejercicio de un personal específico dado el Id de Alta Ejercicio.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "Alta ejercicio del personal actualizado correctamente"),
-            @ApiResponse(responseCode = "400", description = "Error al actualizar el alta ejercicio del personal"),
-            @ApiResponse(responseCode = "500", description = "Error interno del servidor al actualizar el alta ejercicio del personal")
-    })
-    @PutMapping("/alta-ejercicio")
-    public ResponseEntity<Void> actualizarAltaEjercicio(@RequestBody ActualizarAltaEjercicioDTO actualizarAltaEjercicioDTO) {
-        log.info("Petición para actualizar el alta ejercicio con ID: {}", actualizarAltaEjercicioDTO.getIdAltaEjercicio());
-        log.info("Datos a cambiar: campo {}, valor {}", actualizarAltaEjercicioDTO.getCampoActualizado(), actualizarAltaEjercicioDTO.getValor());
-        try {
-            if (actualizarAltaEjercicioDTO.getIdAltaEjercicio() <= 0 || actualizarAltaEjercicioDTO.getCampoActualizado() == null || actualizarAltaEjercicioDTO.getValor() == null) {
-                log.warn("Datos de actualización alta ejercicio incompletos: {}", actualizarAltaEjercicioDTO);
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-            }
-            this.personalService.actualizarAltaEjercicio(actualizarAltaEjercicioDTO);
-            log.info("Alta ejercicio actualizado correctamente: {}", actualizarAltaEjercicioDTO.getIdAltaEjercicio());
-            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-        } catch (Exception e) {
-            log.error("Error al actualizar el alta ejercicio: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
     @Operation(summary = "Obtener bajas laborales del personal", description = "Permite obtener las bajas laborales de un personal específico por su ID económico.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Bajas laborales del personal obtenidas correctamente"),
@@ -453,7 +403,8 @@ public class PersonalController {
     })
     @PostMapping("/bonificacion")
     public ResponseEntity<?> crearBonificacion(@RequestBody CrearBonificacionDTO crearBonificacionDTO) {
-        log.info("Petición para crear bonificación para personal ID: {}", crearBonificacionDTO.getIdPersona());
+        log.info("Petición para crear bonificación para personal ID: {}. DTO recibido: {}", 
+                crearBonificacionDTO.getIdPersona(), crearBonificacionDTO);
         try {
             this.personalService.crearBonificacion(crearBonificacionDTO);
             log.info("Bonificación creada correctamente para personal ID: {}", crearBonificacionDTO.getIdPersona());
@@ -542,6 +493,13 @@ public class PersonalController {
         } catch (IllegalArgumentException e) {
             log.warn("Error de validación al crear período: {}", e.getMessage());
             return ResponseEntity.badRequest().body(java.util.Map.of("mensaje", e.getMessage()));
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            log.error("Error de integridad al crear período de contrato (posible duplicado): {}", e.getMessage());
+            String mensaje = "Error de integridad: El período ya existe o hay un conflicto de datos únicos.";
+            if (e.getMessage().contains("Duplicate entry")) {
+                mensaje = "Ya existe un registro con estos datos únicos (posible conflicto en Bases de Cotización).";
+            }
+            return ResponseEntity.badRequest().body(java.util.Map.of("mensaje", mensaje));
         } catch (Exception e) {
             log.error("Error al crear período de contrato: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

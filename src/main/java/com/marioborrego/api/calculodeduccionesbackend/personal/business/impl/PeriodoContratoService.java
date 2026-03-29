@@ -2,9 +2,12 @@ package com.marioborrego.api.calculodeduccionesbackend.personal.business.impl;
 
 import com.marioborrego.api.calculodeduccionesbackend.cotizacion.domain.models.ClaveContrato;
 import com.marioborrego.api.calculodeduccionesbackend.cotizacion.domain.repository.ClaveContratoRepository;
+import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.BasesCotizacion;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.PeriodoContrato;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.Personal;
+import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.enums.NaturalezaContrato;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.enums.TipoJornada;
+import com.marioborrego.api.calculodeduccionesbackend.personal.domain.repository.BasesCotizacionRepository;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.repository.PeriodoContratoRepository;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.repository.PersonalRepository;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.periodosContrato.*;
@@ -14,7 +17,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.Year;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -23,13 +29,16 @@ public class PeriodoContratoService {
     private final PeriodoContratoRepository periodoContratoRepository;
     private final PersonalRepository personalRepository;
     private final ClaveContratoRepository claveContratoRepository;
+    private final BasesCotizacionRepository basesCotizacionRepository;
 
     public PeriodoContratoService(PeriodoContratoRepository periodoContratoRepository,
                                   PersonalRepository personalRepository,
-                                  ClaveContratoRepository claveContratoRepository) {
+                                  ClaveContratoRepository claveContratoRepository,
+                                  BasesCotizacionRepository basesCotizacionRepository) {
         this.periodoContratoRepository = periodoContratoRepository;
         this.personalRepository = personalRepository;
         this.claveContratoRepository = claveContratoRepository;
+        this.basesCotizacionRepository = basesCotizacionRepository;
     }
 
     public Page<PeriodoContratoDTO> obtenerPeriodosPorEconomico(Long idEconomico, Pageable pageable) {
@@ -44,6 +53,9 @@ public class PeriodoContratoService {
 
     @Transactional
     public PeriodoContratoDTO crearPeriodo(CrearPeriodoContratoDTO dto) {
+        org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(PeriodoContratoService.class);
+        logger.info("Creando periodo de contrato para personal ID {}: clave={}, alta={}, baja={}",
+                dto.getIdPersona(), dto.getClaveContrato(), dto.getFechaAlta(), dto.getFechaBaja());
         Personal personal = personalRepository.findById(dto.getIdPersona())
                 .orElseThrow(() -> new IllegalArgumentException("Trabajador no encontrado: " + dto.getIdPersona()));
 
@@ -57,8 +69,7 @@ public class PeriodoContratoService {
                 .fechaBaja(dto.getFechaBaja())
                 .anioFiscal(dto.getAnioFiscal())
                 .porcentajeJornada(dto.getPorcentajeJornada())
-                .baseCcMensual(dto.getBaseCcMensual() != null ? dto.getBaseCcMensual() : BigDecimal.ZERO)
-                .baseCpMensual(dto.getBaseCpMensual() != null ? dto.getBaseCpMensual() : BigDecimal.ZERO)
+                .horasConvenio(dto.getHorasConvenio() != null ? dto.getHorasConvenio() : 1720L)
                 .build();
 
         validarPeriodo(periodo, clave);
@@ -66,6 +77,18 @@ public class PeriodoContratoService {
         List<PeriodoContrato> existentes = periodoContratoRepository
                 .findByPersonalIdPersonaAndAnioFiscalOrderByFechaAltaAsc(dto.getIdPersona(), dto.getAnioFiscal());
         validarNoSolapamiento(periodo, existentes);
+
+        // Auto-crear BasesCotizacion vinculada al periodo (solo para contratos estándar)
+        NaturalezaContrato nat = clave.getNaturaleza();
+        if (nat != NaturalezaContrato.FORMACION
+                && nat != NaturalezaContrato.BECARIO_REMUNERADO
+                && nat != NaturalezaContrato.BECARIO_NO_REMUNERADO) {
+            BasesCotizacion bases = BasesCotizacion.builder()
+                    .persona(personal)
+                    .periodoContrato(periodo)
+                    .build();
+            periodo.setBasesCotizacionPeriodo(bases);
+        }
 
         return toDTO(periodoContratoRepository.save(periodo));
     }
@@ -84,8 +107,7 @@ public class PeriodoContratoService {
         if (dto.getFechaAlta() != null) periodo.setFechaAlta(dto.getFechaAlta());
         if (dto.getFechaBaja() != null) periodo.setFechaBaja(dto.getFechaBaja());
         if (dto.getPorcentajeJornada() != null) periodo.setPorcentajeJornada(dto.getPorcentajeJornada());
-        if (dto.getBaseCcMensual() != null) periodo.setBaseCcMensual(dto.getBaseCcMensual());
-        if (dto.getBaseCpMensual() != null) periodo.setBaseCpMensual(dto.getBaseCpMensual());
+        if (dto.getHorasConvenio() != null) periodo.setHorasConvenio(dto.getHorasConvenio());
 
         validarPeriodo(periodo, periodo.getClaveContrato());
 
@@ -100,6 +122,7 @@ public class PeriodoContratoService {
 
     @Transactional
     public void eliminarPeriodo(Long idPeriodo) {
+        // La BasesCotizacion vinculada se elimina por cascade (orphanRemoval)
         periodoContratoRepository.deleteById(idPeriodo);
     }
 
@@ -125,18 +148,6 @@ public class PeriodoContratoService {
         if (clave.getJornada() == TipoJornada.TIEMPO_PARCIAL && pj.compareTo(new BigDecimal("100.00")) >= 0) {
             throw new IllegalArgumentException("Un contrato a tiempo parcial requiere porcentaje de jornada inferior a 100%");
         }
-
-        if (clave.getCotizaCcEstandar()) {
-            if (periodo.getBaseCcMensual().compareTo(BigDecimal.ZERO) <= 0) {
-                throw new IllegalArgumentException("La base CC mensual debe ser mayor que 0 para este tipo de contrato");
-            }
-            if (periodo.getBaseCpMensual().compareTo(BigDecimal.ZERO) <= 0) {
-                throw new IllegalArgumentException("La base CP mensual debe ser mayor que 0 para este tipo de contrato");
-            }
-            if (periodo.getBaseCpMensual().compareTo(periodo.getBaseCcMensual()) < 0) {
-                throw new IllegalArgumentException("La base CP mensual no puede ser inferior a la base CC mensual");
-            }
-        }
     }
 
     private void validarNoSolapamiento(PeriodoContrato nuevo, List<PeriodoContrato> existentes) {
@@ -159,6 +170,31 @@ public class PeriodoContratoService {
     private PeriodoContratoDTO toDTO(PeriodoContrato periodo) {
         ClaveContrato clave = periodo.getClaveContrato();
         Personal personal = periodo.getPersonal();
+        Integer anioFiscal = periodo.getAnioFiscal();
+
+        // Cálculo de horas hábiles (pro-rata año fiscal)
+        long diasAnualidad = Year.of(anioFiscal).isLeap() ? 366 : 365;
+        BigDecimal diasAnualidadDecimal = BigDecimal.valueOf(diasAnualidad);
+        BigDecimal CIEN = new BigDecimal("100");
+
+        LocalDate inicioAnio = LocalDate.of(anioFiscal, 1, 1);
+        LocalDate finAnio = LocalDate.of(anioFiscal, 12, 31);
+
+        LocalDate fechaInicioEfectiva = periodo.getFechaAlta().isBefore(inicioAnio) ? inicioAnio : periodo.getFechaAlta();
+        LocalDate fechaFinEfectiva = periodo.getFechaBaja() != null
+                ? (periodo.getFechaBaja().isAfter(finAnio) ? finAnio : periodo.getFechaBaja())
+                : finAnio;
+
+        long horasHabiles = 0L;
+        if (!fechaInicioEfectiva.isAfter(fechaFinEfectiva)) {
+            long diasPeriodo = ChronoUnit.DAYS.between(fechaInicioEfectiva, fechaFinEfectiva) + 1;
+            BigDecimal horasDia = BigDecimal.valueOf(periodo.getHorasConvenio()).divide(diasAnualidadDecimal, 6, RoundingMode.HALF_UP);
+            BigDecimal horasPeriodo = horasDia.multiply(BigDecimal.valueOf(diasPeriodo))
+                    .multiply(periodo.getPorcentajeJornada())
+                    .divide(CIEN, 2, RoundingMode.HALF_UP);
+            horasHabiles = horasPeriodo.setScale(0, RoundingMode.HALF_UP).longValue();
+        }
+
         return PeriodoContratoDTO.builder()
                 .id(periodo.getId())
                 .idPersona(personal.getIdPersona())
@@ -170,10 +206,10 @@ public class PeriodoContratoService {
                 .jornada(clave.getJornada())
                 .fechaAlta(periodo.getFechaAlta())
                 .fechaBaja(periodo.getFechaBaja())
-                .anioFiscal(periodo.getAnioFiscal())
+                .anioFiscal(anioFiscal)
                 .porcentajeJornada(periodo.getPorcentajeJornada())
-                .baseCcMensual(periodo.getBaseCcMensual())
-                .baseCpMensual(periodo.getBaseCpMensual())
+                .horasConvenio(periodo.getHorasConvenio())
+                .horasHabiles(horasHabiles)
                 .build();
     }
 

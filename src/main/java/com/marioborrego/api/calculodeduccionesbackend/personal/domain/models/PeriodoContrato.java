@@ -41,9 +41,10 @@ public class PeriodoContrato {
     @Column(nullable = false, precision = 5, scale = 2)
     private BigDecimal porcentajeJornada;
 
-    @Column(nullable = false, precision = 8, scale = 2)
-    private BigDecimal baseCcMensual;
+    @Column(nullable = false)
+    @Builder.Default
+    private Long horasConvenio = 1720L;
 
-    @Column(nullable = false, precision = 8, scale = 2)
-    private BigDecimal baseCpMensual;
+    @OneToOne(mappedBy = "periodoContrato", cascade = CascadeType.ALL, orphanRemoval = true)
+    private BasesCotizacion basesCotizacionPeriodo;
 }

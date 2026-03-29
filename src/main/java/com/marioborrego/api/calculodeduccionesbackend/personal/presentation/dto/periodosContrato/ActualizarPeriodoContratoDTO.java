@@ -18,6 +18,5 @@ public class ActualizarPeriodoContratoDTO {
     private LocalDate fechaAlta;
     private LocalDate fechaBaja;
     private BigDecimal porcentajeJornada;
-    private BigDecimal baseCcMensual;
-    private BigDecimal baseCpMensual;
+    private Long horasConvenio;
 }

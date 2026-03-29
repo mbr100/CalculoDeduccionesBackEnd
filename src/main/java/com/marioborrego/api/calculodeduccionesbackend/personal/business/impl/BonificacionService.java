@@ -10,13 +10,14 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.Year;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class BonificacionService {
+    private static final BigDecimal CIEN = BigDecimal.valueOf(100);
+    private static final int SCALE = 6;
 
     private final BonificacionesTrabajadorRepository bonificacionRepository;
 
@@ -27,42 +28,72 @@ public class BonificacionService {
     /**
      * Calcula el ahorro total en SS por bonificaciones para un trabajador en un año.
      *
-     * Las bonificaciones se aplican sobre la CUOTA de CC empresa (no sobre la base).
-     * ahorro = cuotaCcEmpresaAnual × proporciónDías × porcentajeBonificacion%
+     * Las bonificaciones de personal investigador se aplican solo sobre la cuota de CC.
+     * El resto de bonificaciones se aplica sobre el total de SS empresa.
      */
     public BonificacionResultDTO calcularAhorroBonificaciones(
             Long idPersonal,
-            BigDecimal cuotaCcEmpresaAnual,
+            BigDecimal cuotaCcEmpresa,
+            BigDecimal ssEmpresa,
             Integer anioFiscal
     ) {
-        List<BonificacionesTrabajador> bonificaciones = bonificacionRepository
-                .findByPersonalIdPersonaAndAnioFiscal(idPersonal, anioFiscal);
+        return calcularAhorroBonificacionesEnRango(
+                obtenerBonificaciones(idPersonal, anioFiscal),
+                cuotaCcEmpresa,
+                ssEmpresa,
+                LocalDate.of(anioFiscal, 1, 1),
+                LocalDate.of(anioFiscal, 12, 31)
+        );
+    }
+
+    public List<BonificacionesTrabajador> obtenerBonificaciones(Long idPersonal, Integer anioFiscal) {
+        return bonificacionRepository.findByPersonalIdPersonaAndAnioFiscal(idPersonal, anioFiscal);
+    }
+
+    public BonificacionResultDTO calcularAhorroBonificacionesEnRango(
+            List<BonificacionesTrabajador> bonificaciones,
+            BigDecimal cuotaCcEmpresa,
+            BigDecimal ssEmpresa,
+            LocalDate fechaInicio,
+            LocalDate fechaFin
+    ) {
+        if (bonificaciones == null || bonificaciones.isEmpty() || fechaFin.isBefore(fechaInicio)) {
+            return BonificacionResultDTO.builder()
+                    .ahorroTotalAnual(BigDecimal.ZERO)
+                    .ahorroInvestigador(BigDecimal.ZERO)
+                    .ahorroOtrasBonificaciones(BigDecimal.ZERO)
+                    .detalles(List.of())
+                    .build();
+        }
 
         BigDecimal ahorroTotalInvestigador = BigDecimal.ZERO;
         BigDecimal ahorroTotalOtras = BigDecimal.ZERO;
         List<DetalleBonificacionDTO> detalles = new ArrayList<>();
+        BigDecimal diasRango = BigDecimal.valueOf(ChronoUnit.DAYS.between(fechaInicio, fechaFin) + 1);
 
         for (BonificacionesTrabajador bonif : bonificaciones) {
-            // Calcular fechas efectivas dentro del año fiscal
-            LocalDate inicioEfectivo = bonif.getFechaInicio().isBefore(LocalDate.of(anioFiscal, 1, 1))
-                    ? LocalDate.of(anioFiscal, 1, 1)
-                    : bonif.getFechaInicio();
+            LocalDate inicioEfectivo = bonif.getFechaInicio().isAfter(fechaInicio)
+                    ? bonif.getFechaInicio()
+                    : fechaInicio;
+            LocalDate finEfectivo = bonif.getFechaFin().isBefore(fechaFin)
+                    ? bonif.getFechaFin()
+                    : fechaFin;
 
-            LocalDate finEfectivo = bonif.getFechaFin().isAfter(LocalDate.of(anioFiscal, 12, 31))
-                    ? LocalDate.of(anioFiscal, 12, 31)
-                    : bonif.getFechaFin();
+            if (finEfectivo.isBefore(inicioEfectivo)) {
+                continue;
+            }
 
-            // Calcular proporción del año (por días)
             BigDecimal diasBonificados = BigDecimal.valueOf(
                     ChronoUnit.DAYS.between(inicioEfectivo, finEfectivo) + 1);
-            BigDecimal diasAnio = BigDecimal.valueOf(Year.of(anioFiscal).length());
-            BigDecimal proporcionAnual = diasBonificados.divide(diasAnio, 6, RoundingMode.HALF_UP);
+            BigDecimal proporcionRango = diasBonificados.divide(diasRango, SCALE, RoundingMode.HALF_UP);
+            BigDecimal baseAhorro = bonif.getTipoBonificacion() == TiposBonificacion.BONIFICACION_PERSONAL_INVESTIGADOR
+                    ? cuotaCcEmpresa
+                    : ssEmpresa;
 
-            // Ahorro = cuota CC empresa anual × proporción × porcentaje bonificación / 100
-            BigDecimal ahorroPeriodo = cuotaCcEmpresaAnual
-                    .multiply(proporcionAnual)
+            BigDecimal ahorroPeriodo = baseAhorro
+                    .multiply(proporcionRango)
                     .multiply(bonif.getPorcentajeBonificacion())
-                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                    .divide(CIEN, 2, RoundingMode.HALF_UP);
 
             if (bonif.getTipoBonificacion() == TiposBonificacion.BONIFICACION_PERSONAL_INVESTIGADOR) {
                 ahorroTotalInvestigador = ahorroTotalInvestigador.add(ahorroPeriodo);

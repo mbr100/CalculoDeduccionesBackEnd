@@ -1,8 +1,6 @@
 package com.marioborrego.api.calculodeduccionesbackend.personal.business.interfaces;
 
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.ActualizacionDTO;
-import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.ActualizarAltaEjercicioDTO;
-import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.altasEjercicio.AltaEjercicioDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bbcc.ActualizarBbccPersonalDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bbcc.BbccPersonalDTO;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bajasLaborales.ActualizarBajaLaboralDTO;
@@ -31,8 +29,6 @@ public interface PersonalService {
     Page<BbccPersonalDTO> obtenerCotizacionesPersonalPorEconomico(Long idEconomico, Pageable pageable);
     void actualizarRetribucionPersonal(ActualizacionDTO<Double, CamposRetribuciones> actualizarRetribucionDTO);
     void actualizarBbccPersonal(ActualizarBbccPersonalDTO actualizarBbccPersonalDTO);
-    Page<AltaEjercicioDTO> obtenerTodoPersonalAltaEjercicio(Long idEconomico, Pageable pageable);
-    void actualizarAltaEjercicio(ActualizarAltaEjercicioDTO actualizarAltaEjercicioDTO);
     Page<BajasLaboralesDTO> obtenerBajasLaboralesPorEconomico(Long idEconomico, Pageable pageable);
     List<ListadoPersonalSelectorEconomicoDTO> obtenerTodoPersonalSelectorEconomico(Long idEconomico);
     void crearBajaLaboral(CrearBajaLaboralDTO bajaLaboralDTO);

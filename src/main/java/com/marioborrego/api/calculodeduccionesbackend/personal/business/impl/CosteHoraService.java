@@ -10,6 +10,8 @@ import com.marioborrego.api.calculodeduccionesbackend.cotizacion.domain.reposito
 import com.marioborrego.api.calculodeduccionesbackend.economico.domain.models.Economico;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.*;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.enums.NaturalezaContrato;
+import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.enums.TiposBonificacion;
+import com.marioborrego.api.calculodeduccionesbackend.personal.domain.repository.BasesCotizacionRepository;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.repository.PeriodoContratoRepository;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.repository.PersonalRepository;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.bonificaciones.BonificacionResultDTO;
@@ -22,13 +24,19 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.Year;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class CosteHoraService {
     private static final BigDecimal CIEN = BigDecimal.valueOf(100);
     private static final int SCALE = 6;
-    private static final BigDecimal DOCE = BigDecimal.valueOf(12);
+    private static final BigDecimal FACTOR_REDUCCION_CUOTA_FIJA = new BigDecimal("0.05");
+    private static final BigDecimal CUOTA_CC_BECARIO_NO_REMUNERADO_DIARIA = new BigDecimal("2.67");
+    private static final BigDecimal CUOTA_ATEP_BECARIO_NO_REMUNERADO_DIARIA = new BigDecimal("0.33");
+    private static final BigDecimal CUOTA_CC_FORMACION_MENSUAL = new BigDecimal("60.76");
+    private static final BigDecimal CUOTA_ATEP_FORMACION_MENSUAL = new BigDecimal("7.38");
+    private static final BigDecimal DIAS_EQUIVALENTE_MES = new BigDecimal("30.42");
 
     private final PersonalRepository personalRepository;
     private final ConfiguracionAnualSSRepository configuracionAnualSSRepository;
@@ -36,6 +44,7 @@ public class CosteHoraService {
     private final ClaveOcupacionRepository claveOcupacionRepository;
     private final BonificacionService bonificacionService;
     private final PeriodoContratoRepository periodoContratoRepository;
+    private final BasesCotizacionRepository basesCotizacionRepository;
 
     private final Logger logger = LoggerFactory.getLogger(CosteHoraService.class);
 
@@ -44,13 +53,15 @@ public class CosteHoraService {
                             TarifaPrimasCnaeRepository tarifaPrimasCnaeRepository,
                             ClaveOcupacionRepository claveOcupacionRepository,
                             BonificacionService bonificacionService,
-                            PeriodoContratoRepository periodoContratoRepository) {
+                            PeriodoContratoRepository periodoContratoRepository,
+                            BasesCotizacionRepository basesCotizacionRepository) {
         this.personalRepository = personalRepository;
         this.configuracionAnualSSRepository = configuracionAnualSSRepository;
         this.tarifaPrimasCnaeRepository = tarifaPrimasCnaeRepository;
         this.claveOcupacionRepository = claveOcupacionRepository;
         this.bonificacionService = bonificacionService;
         this.periodoContratoRepository = periodoContratoRepository;
+        this.basesCotizacionRepository = basesCotizacionRepository;
     }
 
     public void calcularCosteHoraEconomico(Economico economico) {
@@ -95,12 +106,27 @@ public class CosteHoraService {
         BigDecimal retribucionAnual = BigDecimal.valueOf(retribucion.getPercepcionesSalariales());
 
         if (periodos.isEmpty()) {
-            // FALLBACK: sin períodos, usar algoritmo legacy con BasesCotizacion
-            calcularLegacy(personal, ch, config, tipoAtep, origenTipoATEP, retribucionAnual, cnae, anualidad);
+            // Sin períodos de contrato: no se puede calcular coste/hora
+            ch.setRetribucionTotal(retribucionAnual);
+            ch.setHorasMaximas(BigDecimal.ZERO);
+            ch.setCosteHora(BigDecimal.ZERO);
+            ch.setCuotaCC(BigDecimal.ZERO);
+            ch.setCuotaATEP(BigDecimal.ZERO);
+            ch.setCuotaDesempleo(BigDecimal.ZERO);
+            ch.setCuotaFogasa(BigDecimal.ZERO);
+            ch.setCuotaFP(BigDecimal.ZERO);
+            ch.setCuotaMEI(BigDecimal.ZERO);
+            ch.setSsEmpresaBruta(BigDecimal.ZERO);
+            ch.setCosteSS(BigDecimal.ZERO);
+            ch.setAhorroBonificaciones(BigDecimal.ZERO);
+            ch.setAhorroInvestigador(BigDecimal.ZERO);
+            ch.setAhorroOtrasBonificaciones(BigDecimal.ZERO);
+            ch.setTipoATEPAplicado(tipoAtep);
+            ch.setOrigenTipoATEP(origenTipoATEP);
+            logger.info("Personal ID {} sin períodos de contrato: costeHora=0", personal.getIdPersona());
         } else {
-            // ALGORITMO NUEVO: multi-período con bases RNT
             calcularConPeriodos(personal, ch, config, tipoAtep, origenTipoATEP, retribucionAnual,
-                    periodos, economico.getHorasConvenio(), anualidad);
+                    periodos, anualidad);
         }
 
         personal.setCosteHoraPersonal(ch);
@@ -111,9 +137,8 @@ public class CosteHoraService {
     private void calcularConPeriodos(Personal personal, CosteHoraPersonal ch,
                                      ConfiguracionAnualSS config, BigDecimal tipoAtep,
                                      String origenTipoATEP, BigDecimal retribucionAnual,
-                                     List<PeriodoContrato> periodos, Long horasConvenio,
+                                     List<PeriodoContrato> periodos,
                                      int anualidad) {
-        BigDecimal horasAnualesConvenio = BigDecimal.valueOf(horasConvenio);
         int diasDelAnio = Year.of(anualidad).length();
         BigDecimal diasDelAnioDecimal = BigDecimal.valueOf(diasDelAnio);
 
@@ -124,14 +149,15 @@ public class CosteHoraService {
         BigDecimal totalCuotaFp = BigDecimal.ZERO;
         BigDecimal totalCuotaMei = BigDecimal.ZERO;
         BigDecimal totalHorasEfectivas = BigDecimal.ZERO;
-        long diasTotalesTrabajados = 0;
+        List<TramoCotizacion> tramosCotizacion = new ArrayList<>();
 
         LocalDate inicioAnio = LocalDate.of(anualidad, 1, 1);
         LocalDate finAnio = LocalDate.of(anualidad, 12, 31);
+        List<BonificacionesTrabajador> bonificacionesTrabajador = bonificacionService.obtenerBonificaciones(
+                personal.getIdPersona(), anualidad);
 
         for (PeriodoContrato periodo : periodos) {
             ClaveContrato clave = periodo.getClaveContrato();
-            NaturalezaContrato naturaleza = clave.getNaturaleza();
 
             // Fechas efectivas dentro del año fiscal
             LocalDate fechaInicio = periodo.getFechaAlta().isBefore(inicioAnio) ? inicioAnio : periodo.getFechaAlta();
@@ -139,87 +165,82 @@ public class CosteHoraService {
                     ? (periodo.getFechaBaja().isAfter(finAnio) ? finAnio : periodo.getFechaBaja())
                     : finAnio;
 
+            if (fechaFin.isBefore(fechaInicio)) {
+                continue;
+            }
+
             long diasPeriodo = ChronoUnit.DAYS.between(fechaInicio, fechaFin) + 1;
-            diasTotalesTrabajados += diasPeriodo;
             BigDecimal diasPeriodoDecimal = BigDecimal.valueOf(diasPeriodo);
 
-            // Horas efectivas de este período
-            BigDecimal horasPeriodo = horasAnualesConvenio
+            // Horas efectivas de este período (cada período tiene sus propias horas convenio)
+            BigDecimal horasConvenioPeriodo = BigDecimal.valueOf(periodo.getHorasConvenio());
+            BigDecimal horasPeriodo = horasConvenioPeriodo
                     .multiply(diasPeriodoDecimal)
                     .divide(diasDelAnioDecimal, SCALE, RoundingMode.HALF_UP)
                     .multiply(periodo.getPorcentajeJornada())
                     .divide(CIEN, SCALE, RoundingMode.HALF_UP);
             totalHorasEfectivas = totalHorasEfectivas.add(horasPeriodo);
 
-            BigDecimal proporcion = diasPeriodoDecimal.divide(diasDelAnioDecimal, SCALE, RoundingMode.HALF_UP);
+            for (TramoCotizacion tramo : construirTramosCotizacion(periodo, fechaInicio, fechaFin, config, tipoAtep, personal)) {
+                tramosCotizacion.add(tramo);
+                totalCuotaCc = totalCuotaCc.add(tramo.cuotaCc());
+                totalCuotaAtep = totalCuotaAtep.add(tramo.cuotaAtep());
+                totalCuotaDesempleo = totalCuotaDesempleo.add(tramo.cuotaDesempleo());
+                totalCuotaFogasa = totalCuotaFogasa.add(tramo.cuotaFogasa());
+                totalCuotaFp = totalCuotaFp.add(tramo.cuotaFp());
+                totalCuotaMei = totalCuotaMei.add(tramo.cuotaMei());
+            }
+        }
 
-            BigDecimal cuotaCcPeriodo;
-            BigDecimal cuotaAtepPeriodo;
-            BigDecimal cuotaDesempleoPeriodo = BigDecimal.ZERO;
-            BigDecimal cuotaFogasaPeriodo = BigDecimal.ZERO;
-            BigDecimal cuotaFpPeriodo = BigDecimal.ZERO;
-            BigDecimal cuotaMeiPeriodo = BigDecimal.ZERO;
+        // PASO: Restar horas de baja
+        BigDecimal totalHorasBaja = BigDecimal.ZERO;
+        for (BajaLaboral baja : personal.getBajasLaborales()) {
+            LocalDate fechaInicioBaja = baja.getFechaInicio().isBefore(inicioAnio) ? inicioAnio : baja.getFechaInicio();
+            LocalDate fechaFinBaja = baja.getFechaFin() == null || baja.getFechaFin().isAfter(finAnio) ? finAnio : baja.getFechaFin();
 
-            if (naturaleza == NaturalezaContrato.BECARIO_NO_REMUNERADO) {
-                // Cuota fija diaria, 95% reducción
-                cuotaCcPeriodo = new BigDecimal("2.67").multiply(diasPeriodoDecimal).multiply(new BigDecimal("0.05"));
-                cuotaAtepPeriodo = new BigDecimal("0.33").multiply(diasPeriodoDecimal);
+            if (!fechaInicioBaja.isAfter(fechaFinBaja)) {
+                for (PeriodoContrato pc : periodos) {
+                    LocalDate pcInicio = pc.getFechaAlta().isBefore(inicioAnio) ? inicioAnio : pc.getFechaAlta();
+                    LocalDate pcFin = pc.getFechaBaja() == null || pc.getFechaBaja().isAfter(finAnio) ? finAnio : pc.getFechaBaja();
 
-            } else if (naturaleza == NaturalezaContrato.BECARIO_REMUNERADO || naturaleza == NaturalezaContrato.FORMACION) {
-                // Cuota fija mensual, 95% reducción
-                BigDecimal mesesPeriodo = diasPeriodoDecimal.divide(new BigDecimal("30.42"), SCALE, RoundingMode.HALF_UP);
-                cuotaCcPeriodo = new BigDecimal("60.76").multiply(mesesPeriodo).multiply(new BigDecimal("0.05"));
-                cuotaAtepPeriodo = new BigDecimal("7.38").multiply(mesesPeriodo);
+                    LocalDate overlapInicio = pcInicio.isAfter(fechaInicioBaja) ? pcInicio : fechaInicioBaja;
+                    LocalDate overlapFin = pcFin.isBefore(fechaFinBaja) ? pcFin : fechaFinBaja;
 
-            } else {
-                // INDEFINIDO o TEMPORAL: cálculo estándar con bases RNT
-                BigDecimal baseCcAnual = periodo.getBaseCcMensual().multiply(DOCE);
-                BigDecimal baseCpAnual = periodo.getBaseCpMensual().multiply(DOCE);
-
-                cuotaCcPeriodo = baseCcAnual.multiply(config.getCcEmpresa()).divide(CIEN, SCALE, RoundingMode.HALF_UP).multiply(proporcion);
-                cuotaAtepPeriodo = baseCpAnual.multiply(tipoAtep).divide(CIEN, SCALE, RoundingMode.HALF_UP).multiply(proporcion);
-
-                if (clave.getCotizaDesempleo()) {
-                    BigDecimal tipoDesempleo = naturaleza == NaturalezaContrato.TEMPORAL
-                            ? config.getDesempleoEmpresaTemporal()
-                            : config.getDesempleoEmpresaIndefinido();
-                    cuotaDesempleoPeriodo = baseCpAnual.multiply(tipoDesempleo).divide(CIEN, SCALE, RoundingMode.HALF_UP).multiply(proporcion);
-                }
-
-                if (clave.getCotizaFogasa()) {
-                    cuotaFogasaPeriodo = baseCpAnual.multiply(config.getFogasa()).divide(CIEN, SCALE, RoundingMode.HALF_UP).multiply(proporcion);
-                }
-                if (clave.getCotizaFp()) {
-                    cuotaFpPeriodo = baseCpAnual.multiply(config.getFpEmpresa()).divide(CIEN, SCALE, RoundingMode.HALF_UP).multiply(proporcion);
-                }
-                if (clave.getCotizaMei()) {
-                    cuotaMeiPeriodo = baseCcAnual.multiply(config.getMeiEmpresa()).divide(CIEN, SCALE, RoundingMode.HALF_UP).multiply(proporcion);
+                    if (!overlapInicio.isAfter(overlapFin)) {
+                        long diasSolapados = ChronoUnit.DAYS.between(overlapInicio, overlapFin) + 1;
+                        BigDecimal horasDia = BigDecimal.valueOf(pc.getHorasConvenio()).divide(diasDelAnioDecimal, 6, RoundingMode.HALF_UP);
+                        BigDecimal horasBajaPc = horasDia.multiply(BigDecimal.valueOf(diasSolapados))
+                                .multiply(pc.getPorcentajeJornada())
+                                .divide(CIEN, SCALE, RoundingMode.HALF_UP);
+                        totalHorasBaja = totalHorasBaja.add(horasBajaPc);
+                    }
                 }
             }
-
-            totalCuotaCc = totalCuotaCc.add(cuotaCcPeriodo);
-            totalCuotaAtep = totalCuotaAtep.add(cuotaAtepPeriodo);
-            totalCuotaDesempleo = totalCuotaDesempleo.add(cuotaDesempleoPeriodo);
-            totalCuotaFogasa = totalCuotaFogasa.add(cuotaFogasaPeriodo);
-            totalCuotaFp = totalCuotaFp.add(cuotaFpPeriodo);
-            totalCuotaMei = totalCuotaMei.add(cuotaMeiPeriodo);
         }
+        BigDecimal totalHorasTrabajadas = totalHorasEfectivas;
+        totalHorasEfectivas = totalHorasTrabajadas.subtract(totalHorasBaja);
 
         // PASO 6: SS empresa bruta
         BigDecimal ssEmpresaBruta = totalCuotaCc.add(totalCuotaAtep).add(totalCuotaDesempleo)
                 .add(totalCuotaFogasa).add(totalCuotaFp).add(totalCuotaMei);
 
         // PASO 7: Bonificaciones
-        BonificacionResultDTO bonificaciones = bonificacionService.calcularAhorroBonificaciones(
-                personal.getIdPersona(), totalCuotaCc, anualidad);
-        BigDecimal ahorroBonificaciones = bonificaciones.getAhorroTotalAnual();
+        BonificacionResultDTO bonificaciones = calcularBonificacionesSobreTramos(
+                bonificacionesTrabajador,
+                tramosCotizacion
+        );
+        BigDecimal ahorroInvestigador = bonificaciones.getAhorroInvestigador();
+        BigDecimal ahorroOtrasBonificaciones = bonificaciones.getAhorroOtrasBonificaciones();
+        BigDecimal ahorroBonificaciones = ahorroInvestigador.add(ahorroOtrasBonificaciones);
 
         // PASO 8: SS empresa neta
         BigDecimal ssEmpresaNeta = ssEmpresaBruta.subtract(ahorroBonificaciones).max(BigDecimal.ZERO);
 
         // Guardar desglose
         ch.setRetribucionTotal(retribucionAnual);
-        ch.setHorasMaximas(totalHorasEfectivas);
+        ch.setHorasMaximas(totalHorasTrabajadas); // Horas antes de restar bajas
+        ch.setHorasEfectivas(totalHorasEfectivas); // Denominador real (trabajadas - bajas)
+        ch.setHorasBaja(totalHorasBaja);
         ch.setCuotaCC(totalCuotaCc);
         ch.setCuotaATEP(totalCuotaAtep);
         ch.setCuotaDesempleo(totalCuotaDesempleo);
@@ -230,13 +251,13 @@ public class CosteHoraService {
         ch.setOrigenTipoATEP(origenTipoATEP);
         ch.setSsEmpresaBruta(ssEmpresaBruta);
         ch.setAhorroBonificaciones(ahorroBonificaciones);
-        ch.setAhorroInvestigador(bonificaciones.getAhorroInvestigador());
-        ch.setAhorroOtrasBonificaciones(bonificaciones.getAhorroOtrasBonificaciones());
+        ch.setAhorroInvestigador(ahorroInvestigador);
+        ch.setAhorroOtrasBonificaciones(ahorroOtrasBonificaciones);
         ch.setCosteSS(ssEmpresaNeta);
 
         // PASO 9: Coste/hora
         if (totalHorasEfectivas.compareTo(BigDecimal.ZERO) > 0) {
-            ch.setCosteHora(retribucionAnual.add(ssEmpresaNeta).divide(totalHorasEfectivas, SCALE, RoundingMode.HALF_UP));
+            ch.setCosteHora(retribucionAnual.add(ssEmpresaNeta).divide(totalHorasEfectivas, 2, RoundingMode.HALF_UP));
         } else {
             ch.setCosteHora(BigDecimal.ZERO);
         }
@@ -245,62 +266,197 @@ public class CosteHoraService {
                 personal.getIdPersona(), ch.getCosteHora(), retribucionAnual, ssEmpresaNeta, totalHorasEfectivas);
     }
 
-    private void calcularLegacy(Personal personal, CosteHoraPersonal ch,
-                                ConfiguracionAnualSS config, BigDecimal tipoAtep,
-                                String origenTipoATEP, BigDecimal retribucionAnual,
-                                String cnae, int anualidad) {
-        BasesCotizacion basesCotizacion = obtenerBasesCotizacion(personal);
-        HorasPersonal horasPersonal = obtenerHorasPersonal(personal);
-
-        ch.setRetribucionTotal(retribucionAnual);
-        BigDecimal horasAnuales = BigDecimal.valueOf(horasPersonal.getHorasMaximasAnuales());
-        ch.setHorasMaximas(horasAnuales);
-
-        BigDecimal baseCCAnual = BigDecimal.valueOf(basesCotizacion.getBasesCotizacionContingenciasComunesAnual());
-        BigDecimal baseCPAnual = baseCCAnual;
-
-        BigDecimal pctDesempleo = personal.isEsContratoIndefinido()
-                ? config.getDesempleoEmpresaIndefinido()
-                : config.getDesempleoEmpresaTemporal();
-
-        BigDecimal cuotaCC = baseCCAnual.multiply(config.getCcEmpresa()).divide(CIEN, SCALE, RoundingMode.HALF_UP);
-        BigDecimal cuotaATEP = baseCPAnual.multiply(tipoAtep).divide(CIEN, SCALE, RoundingMode.HALF_UP);
-        BigDecimal cuotaDesempleo = baseCPAnual.multiply(pctDesempleo).divide(CIEN, SCALE, RoundingMode.HALF_UP);
-        BigDecimal cuotaFogasa = baseCPAnual.multiply(config.getFogasa()).divide(CIEN, SCALE, RoundingMode.HALF_UP);
-        BigDecimal cuotaFP = baseCPAnual.multiply(config.getFpEmpresa()).divide(CIEN, SCALE, RoundingMode.HALF_UP);
-        BigDecimal cuotaMEI = baseCCAnual.multiply(config.getMeiEmpresa()).divide(CIEN, SCALE, RoundingMode.HALF_UP);
-
-        BigDecimal ssEmpresaBruta = cuotaCC.add(cuotaATEP).add(cuotaDesempleo).add(cuotaFogasa).add(cuotaFP).add(cuotaMEI);
-
-        BonificacionResultDTO bonificaciones = bonificacionService.calcularAhorroBonificaciones(
-                personal.getIdPersona(), cuotaCC, anualidad);
-        BigDecimal ahorroBonificaciones = bonificaciones.getAhorroTotalAnual();
-        BigDecimal ssEmpresaNeta = ssEmpresaBruta.subtract(ahorroBonificaciones).max(BigDecimal.ZERO);
-
-        BigDecimal cuotaCCNeta = cuotaCC.subtract(ahorroBonificaciones).max(BigDecimal.ZERO);
-
-        ch.setCuotaCC(cuotaCCNeta);
-        ch.setCuotaATEP(cuotaATEP);
-        ch.setCuotaDesempleo(cuotaDesempleo);
-        ch.setCuotaFogasa(cuotaFogasa);
-        ch.setCuotaFP(cuotaFP);
-        ch.setCuotaMEI(cuotaMEI);
-        ch.setTipoATEPAplicado(tipoAtep);
-        ch.setOrigenTipoATEP(origenTipoATEP);
-        ch.setSsEmpresaBruta(ssEmpresaBruta);
-        ch.setAhorroBonificaciones(ahorroBonificaciones);
-        ch.setAhorroInvestigador(bonificaciones.getAhorroInvestigador());
-        ch.setAhorroOtrasBonificaciones(bonificaciones.getAhorroOtrasBonificaciones());
-        ch.setCosteSS(ssEmpresaNeta);
-
-        if (horasAnuales.compareTo(BigDecimal.ZERO) > 0) {
-            ch.setCosteHora(retribucionAnual.add(ssEmpresaNeta).divide(horasAnuales, SCALE, RoundingMode.HALF_UP));
-        } else {
-            ch.setCosteHora(BigDecimal.ZERO);
+    private BonificacionResultDTO calcularBonificacionesSobreTramos(List<BonificacionesTrabajador> bonificaciones,
+                                                                    List<TramoCotizacion> tramosCotizacion) {
+        if (bonificaciones == null || bonificaciones.isEmpty() || tramosCotizacion.isEmpty()) {
+            return BonificacionResultDTO.builder()
+                    .ahorroTotalAnual(BigDecimal.ZERO)
+                    .ahorroInvestigador(BigDecimal.ZERO)
+                    .ahorroOtrasBonificaciones(BigDecimal.ZERO)
+                    .detalles(List.of())
+                    .build();
         }
 
-        logger.info("Personal ID {} (legacy): costeHora={}, retrib={}, SS_neta={}, horas={}",
-                personal.getIdPersona(), ch.getCosteHora(), retribucionAnual, ssEmpresaNeta, horasAnuales);
+        BigDecimal ahorroInvestigador = BigDecimal.ZERO;
+        BigDecimal ahorroOtrasBonificaciones = BigDecimal.ZERO;
+
+        for (BonificacionesTrabajador bonificacion : bonificaciones) {
+            BigDecimal baseBonificable = BigDecimal.ZERO;
+
+            for (TramoCotizacion tramo : tramosCotizacion) {
+                LocalDate inicioSolape = bonificacion.getFechaInicio().isAfter(tramo.fechaInicio())
+                        ? bonificacion.getFechaInicio()
+                        : tramo.fechaInicio();
+                LocalDate finSolape = bonificacion.getFechaFin().isBefore(tramo.fechaFin())
+                        ? bonificacion.getFechaFin()
+                        : tramo.fechaFin();
+
+                if (finSolape.isBefore(inicioSolape)) {
+                    continue;
+                }
+
+                BigDecimal diasSolape = BigDecimal.valueOf(ChronoUnit.DAYS.between(inicioSolape, finSolape) + 1);
+                BigDecimal diasTramo = BigDecimal.valueOf(ChronoUnit.DAYS.between(tramo.fechaInicio(), tramo.fechaFin()) + 1);
+                BigDecimal proporcionSolape = diasSolape.divide(diasTramo, SCALE, RoundingMode.HALF_UP);
+                BigDecimal baseTramo = bonificacion.getTipoBonificacion() == TiposBonificacion.BONIFICACION_PERSONAL_INVESTIGADOR
+                        ? tramo.cuotaCc()
+                        : tramo.totalSs();
+                baseBonificable = baseBonificable.add(baseTramo.multiply(proporcionSolape));
+            }
+
+            BigDecimal ahorroBonificacion = baseBonificable
+                    .multiply(bonificacion.getPorcentajeBonificacion())
+                    .divide(CIEN, 2, RoundingMode.HALF_UP);
+
+            if (bonificacion.getTipoBonificacion() == TiposBonificacion.BONIFICACION_PERSONAL_INVESTIGADOR) {
+                ahorroInvestigador = ahorroInvestigador.add(ahorroBonificacion);
+            } else {
+                ahorroOtrasBonificaciones = ahorroOtrasBonificaciones.add(ahorroBonificacion);
+            }
+        }
+
+        return BonificacionResultDTO.builder()
+                .ahorroTotalAnual(ahorroInvestigador.add(ahorroOtrasBonificaciones))
+                .ahorroInvestigador(ahorroInvestigador)
+                .ahorroOtrasBonificaciones(ahorroOtrasBonificaciones)
+                .detalles(List.of())
+                .build();
+    }
+
+    private List<TramoCotizacion> construirTramosCotizacion(PeriodoContrato periodo,
+                                                            LocalDate fechaInicio,
+                                                            LocalDate fechaFin,
+                                                            ConfiguracionAnualSS config,
+                                                            BigDecimal tipoAtep,
+                                                            Personal personal) {
+        NaturalezaContrato naturaleza = periodo.getClaveContrato().getNaturaleza();
+        if (naturaleza == NaturalezaContrato.BECARIO_NO_REMUNERADO) {
+            return construirTramosCuotaFijaDiaria(fechaInicio, fechaFin);
+        }
+        if (naturaleza == NaturalezaContrato.BECARIO_REMUNERADO || naturaleza == NaturalezaContrato.FORMACION) {
+            return construirTramosCuotaFijaMensual(fechaInicio, fechaFin);
+        }
+        return construirTramosEstandar(periodo, fechaInicio, fechaFin, config, tipoAtep, personal);
+    }
+
+    private List<TramoCotizacion> construirTramosCuotaFijaDiaria(LocalDate fechaInicio, LocalDate fechaFin) {
+        List<TramoCotizacion> tramos = new ArrayList<>();
+        LocalDate cursor = fechaInicio.withDayOfMonth(1);
+        while (!cursor.isAfter(fechaFin)) {
+            LocalDate inicioTramo = fechaInicio.isAfter(cursor) ? fechaInicio : cursor;
+            LocalDate finMes = cursor.withDayOfMonth(cursor.lengthOfMonth());
+            LocalDate finTramo = fechaFin.isBefore(finMes) ? fechaFin : finMes;
+            BigDecimal diasTramo = BigDecimal.valueOf(ChronoUnit.DAYS.between(inicioTramo, finTramo) + 1);
+            tramos.add(new TramoCotizacion(
+                    inicioTramo,
+                    finTramo,
+                    CUOTA_CC_BECARIO_NO_REMUNERADO_DIARIA.multiply(diasTramo).multiply(FACTOR_REDUCCION_CUOTA_FIJA),
+                    CUOTA_ATEP_BECARIO_NO_REMUNERADO_DIARIA.multiply(diasTramo),
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO
+            ));
+            cursor = cursor.plusMonths(1);
+        }
+        return tramos;
+    }
+
+    private List<TramoCotizacion> construirTramosCuotaFijaMensual(LocalDate fechaInicio, LocalDate fechaFin) {
+        List<TramoCotizacion> tramos = new ArrayList<>();
+        LocalDate cursor = fechaInicio.withDayOfMonth(1);
+        while (!cursor.isAfter(fechaFin)) {
+            LocalDate inicioTramo = fechaInicio.isAfter(cursor) ? fechaInicio : cursor;
+            LocalDate finMes = cursor.withDayOfMonth(cursor.lengthOfMonth());
+            LocalDate finTramo = fechaFin.isBefore(finMes) ? fechaFin : finMes;
+            BigDecimal diasTramo = BigDecimal.valueOf(ChronoUnit.DAYS.between(inicioTramo, finTramo) + 1);
+            BigDecimal mesesEquivalentes = diasTramo.divide(DIAS_EQUIVALENTE_MES, SCALE, RoundingMode.HALF_UP);
+            tramos.add(new TramoCotizacion(
+                    inicioTramo,
+                    finTramo,
+                    CUOTA_CC_FORMACION_MENSUAL.multiply(mesesEquivalentes).multiply(FACTOR_REDUCCION_CUOTA_FIJA),
+                    CUOTA_ATEP_FORMACION_MENSUAL.multiply(mesesEquivalentes),
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO
+            ));
+            cursor = cursor.plusMonths(1);
+        }
+        return tramos;
+    }
+
+    private List<TramoCotizacion> construirTramosEstandar(PeriodoContrato periodo,
+                                                          LocalDate fechaInicio,
+                                                          LocalDate fechaFin,
+                                                          ConfiguracionAnualSS config,
+                                                          BigDecimal tipoAtep,
+                                                          Personal personal) {
+        BasesCotizacion basesPeriodo = basesCotizacionRepository.findByPeriodoContratoId(periodo.getId())
+                .orElse(null);
+        if (basesPeriodo == null) {
+            logger.warn("No se encontraron bases de cotización para el periodo ID {} del personal ID {}",
+                    periodo.getId(), personal.getIdPersona());
+            return List.of(new TramoCotizacion(
+                    fechaInicio,
+                    fechaFin,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO
+            ));
+        }
+
+        List<TramoCotizacion> tramos = new ArrayList<>();
+        ClaveContrato clave = periodo.getClaveContrato();
+        NaturalezaContrato naturaleza = clave.getNaturaleza();
+        LocalDate cursor = fechaInicio.withDayOfMonth(1);
+
+        while (!cursor.isAfter(fechaFin)) {
+            LocalDate inicioTramo = fechaInicio.isAfter(cursor) ? fechaInicio : cursor;
+            LocalDate finMes = cursor.withDayOfMonth(cursor.lengthOfMonth());
+            LocalDate finTramo = fechaFin.isBefore(finMes) ? fechaFin : finMes;
+            BigDecimal baseCcMes = BigDecimal.valueOf(basesPeriodo.getBaseCotizacionContingenciasComunesMes(cursor.getMonthValue()));
+            BigDecimal baseCpMes = baseCcMes;
+            BigDecimal cuotaCcMes = baseCcMes.multiply(config.getCcEmpresa()).divide(CIEN, SCALE, RoundingMode.HALF_UP);
+            BigDecimal cuotaAtepMes = baseCpMes.multiply(tipoAtep).divide(CIEN, SCALE, RoundingMode.HALF_UP);
+            BigDecimal cuotaDesempleoMes = BigDecimal.ZERO;
+            BigDecimal cuotaFogasaMes = BigDecimal.ZERO;
+            BigDecimal cuotaFpMes = BigDecimal.ZERO;
+            BigDecimal cuotaMeiMes = BigDecimal.ZERO;
+
+            if (clave.getCotizaDesempleo()) {
+                BigDecimal tipoDesempleo = naturaleza == NaturalezaContrato.TEMPORAL
+                        ? config.getDesempleoEmpresaTemporal()
+                        : config.getDesempleoEmpresaIndefinido();
+                cuotaDesempleoMes = baseCpMes.multiply(tipoDesempleo).divide(CIEN, SCALE, RoundingMode.HALF_UP);
+            }
+            if (clave.getCotizaFogasa()) {
+                cuotaFogasaMes = baseCpMes.multiply(config.getFogasa()).divide(CIEN, SCALE, RoundingMode.HALF_UP);
+            }
+            if (clave.getCotizaFp()) {
+                cuotaFpMes = baseCpMes.multiply(config.getFpEmpresa()).divide(CIEN, SCALE, RoundingMode.HALF_UP);
+            }
+            if (clave.getCotizaMei()) {
+                cuotaMeiMes = baseCcMes.multiply(config.getMeiEmpresa()).divide(CIEN, SCALE, RoundingMode.HALF_UP);
+            }
+
+            tramos.add(new TramoCotizacion(
+                    inicioTramo,
+                    finTramo,
+                    cuotaCcMes,
+                    cuotaAtepMes,
+                    cuotaDesempleoMes,
+                    cuotaFogasaMes,
+                    cuotaFpMes,
+                    cuotaMeiMes
+            ));
+            cursor = cursor.plusMonths(1);
+        }
+
+        return tramos;
     }
 
     private Retribucion obtenerRetribucion(Personal personal) {
@@ -311,19 +467,21 @@ public class CosteHoraService {
         return retribucion;
     }
 
-    private BasesCotizacion obtenerBasesCotizacion(Personal personal) {
-        BasesCotizacion basesCotizacion = personal.getBasesCotizacion();
-        if (basesCotizacion == null) {
-            throw new RuntimeException("No se encontró la base de cotización para el personal con ID: " + personal.getIdPersona());
+    private record TramoCotizacion(LocalDate fechaInicio,
+                                   LocalDate fechaFin,
+                                   BigDecimal cuotaCc,
+                                   BigDecimal cuotaAtep,
+                                   BigDecimal cuotaDesempleo,
+                                   BigDecimal cuotaFogasa,
+                                   BigDecimal cuotaFp,
+                                   BigDecimal cuotaMei) {
+        private BigDecimal totalSs() {
+            return cuotaCc
+                    .add(cuotaAtep)
+                    .add(cuotaDesempleo)
+                    .add(cuotaFogasa)
+                    .add(cuotaFp)
+                    .add(cuotaMei);
         }
-        return basesCotizacion;
-    }
-
-    private HorasPersonal obtenerHorasPersonal(Personal personal) {
-        HorasPersonal horasPersonal = personal.getHorasPersonal();
-        if (horasPersonal == null || horasPersonal.getHorasMaximasAnuales() == null) {
-            throw new RuntimeException("No se encontraron las horas para el personal con ID: " + personal.getIdPersona());
-        }
-        return horasPersonal;
     }
 }

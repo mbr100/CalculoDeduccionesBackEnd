@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,4 +28,12 @@ public class BbccPersonalDTO {
     private Long basesCotizacionContingenciasComunesOctubre;
     private Long basesCotizacionContingenciasComunesNoviembre;
     private Long basesCotizacionContingenciasComunesDiciembre;
+
+    // Información del periodo de contrato (null si es la fila por defecto)
+    private Long idPeriodoContrato;
+    private String claveContrato;
+    private String descripcionContrato;
+    private LocalDate fechaAlta;
+    private LocalDate fechaBaja;
+    private Integer anioFiscal;
 }

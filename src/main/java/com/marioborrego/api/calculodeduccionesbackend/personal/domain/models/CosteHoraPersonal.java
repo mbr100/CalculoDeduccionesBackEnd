@@ -19,6 +19,8 @@ public class CosteHoraPersonal {
     private BigDecimal retribucionTotal;
     private BigDecimal costeSS;
     private BigDecimal horasMaximas;
+    private BigDecimal horasEfectivas;
+    private BigDecimal horasBaja;
     private BigDecimal costeHora;
 
     // Desglose de cuotas SS empresa (anuales)

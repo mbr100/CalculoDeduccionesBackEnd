@@ -5,6 +5,7 @@ import com.marioborrego.api.calculodeduccionesbackend.economico.domain.repositor
 import com.marioborrego.api.calculodeduccionesbackend.helper.ValoresDefecto;
 import com.marioborrego.api.calculodeduccionesbackend.personal.business.interfaces.PersonalService;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.*;
+import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.enums.NaturalezaContrato;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.enums.TiposBonificacion;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.repository.*;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.ActualizacionDTO;
@@ -35,6 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +56,8 @@ public class PersonalServiceImpl implements PersonalService {
     private final BonificacionesTrabajadorRepository bonificacionesTrabajadorRepository;
     private final CosteHoraService costeHoraService;
     private final BonificacionService bonificacionService;
+    private final PeriodoContratoRepository periodoContratoRepository;
+    private final com.marioborrego.api.calculodeduccionesbackend.proyecto.domain.repository.ProyectoPersonalRepository proyectoPersonalRepository;
 
     private final Logger logger = LoggerFactory.getLogger(PersonalServiceImpl.class);
 
@@ -61,7 +66,9 @@ public class PersonalServiceImpl implements PersonalService {
     public PersonalServiceImpl(PersonalRepository personalRepository, EconomicoRepository economicoRepository, RetribucionRepository retribucionRepository,
                                BasesCotizacionRepository basesCotizacionRepository, HorasEmpleadoRepository horasEmpleadoRepository,
                                BajaLaboralRepository bajaLaboralRepository, BonificacionesTrabajadorRepository bonificacionesTrabajadorRepository,
-                               CosteHoraService costeHoraService, BonificacionService bonificacionService) {
+                               CosteHoraService costeHoraService, BonificacionService bonificacionService,
+                               PeriodoContratoRepository periodoContratoRepository,
+                               com.marioborrego.api.calculodeduccionesbackend.proyecto.domain.repository.ProyectoPersonalRepository proyectoPersonalRepository) {
         this.bonificacionesTrabajadorRepository = bonificacionesTrabajadorRepository;
         this.basesCotizacionRepository = basesCotizacionRepository;
         this.retribucionRepository = retribucionRepository;
@@ -71,6 +78,8 @@ public class PersonalServiceImpl implements PersonalService {
         this.bajaLaboralRepository = bajaLaboralRepository;
         this.costeHoraService = costeHoraService;
         this.bonificacionService = bonificacionService;
+        this.periodoContratoRepository = periodoContratoRepository;
+        this.proyectoPersonalRepository = proyectoPersonalRepository;
     }
 
     @Override
@@ -184,22 +193,27 @@ public class PersonalServiceImpl implements PersonalService {
         if (economico <= 0) {
             throw new IllegalArgumentException("El ID del económico no puede ser nulo o menor o igual a cero.");
         }
-        Optional<Personal> personal = personalRepository.findById(id);
-        if (personal.isPresent()) {
-            if (!Objects.equals(personal.get().getEconomico().getIdEconomico(), economico)) {
-                throw new IllegalArgumentException("El personal económico no pertenece al económico proporcionado.");
-            }
-            bonificacionesTrabajadorRepository.deleteAll(personal.get().getBonificaciones());
-            bajaLaboralRepository.deleteAll(personal.get().getBajasLaborales());
-            horasEmpleadoRepository.delete(personal.get().getHorasPersonal());
-            retribucionRepository.delete(personal.get().getRetribucion());
-            basesCotizacionRepository.delete(personal.get().getBasesCotizacion());
-            personalRepository.delete(personal.get());
-            this.costeHoraService.calcularCosteHoraEconomico(personal.get().getEconomico());
+        Personal personal = personalRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("No existe un personal económico con el ID proporcionado."));
 
-        } else {
-            throw new IllegalArgumentException("No existe un personal económico con el ID proporcionado.");
+        if (!Objects.equals(personal.getEconomico().getIdEconomico(), economico)) {
+            throw new IllegalArgumentException("El personal económico no pertenece al económico proporcionado.");
         }
+
+        Long idEconomico = personal.getEconomico().getIdEconomico();
+
+        // ProyectoPersonal tiene FK desde el lado de Proyecto — borrar explícitamente
+        proyectoPersonalRepository.deleteByPersonalIdPersona(id);
+
+        // El resto de hijos (retribucion, basesCotizacion, horasPersonal, costeHoraPersonal,
+        // bonificaciones, bajasLaborales, periodosContrato) se eliminan por cascade desde Personal
+        personalRepository.delete(personal);
+        personalRepository.flush();
+
+        // Refrescar el económico desde BD para que no contenga el personal eliminado
+        Economico eco = economicoRepository.findById(idEconomico)
+                .orElseThrow(() -> new IllegalArgumentException("Económico no encontrado tras eliminación"));
+        this.costeHoraService.calcularCosteHoraEconomico(eco);
     }
 
     @Override
@@ -239,8 +253,8 @@ public class PersonalServiceImpl implements PersonalService {
         updatedPersonal.setTitulacion2(personalEconomicoDTO.getTitulacion2());
         updatedPersonal.setTitulacion3(personalEconomicoDTO.getTitulacion3());
         updatedPersonal.setTitulacion4(personalEconomicoDTO.getTitulacion4());
-        updatedPersonal.setEsPersonalInvestigador(personalEconomicoDTO.isEsPersonalInvestigador());
-        updatedPersonal.setEsContratoIndefinido(personalEconomicoDTO.isEsContratoIndefinido());
+        // esPersonalInvestigador y esContratoIndefinido se gestionan desde sus propias secciones
+        // No se sobrescriben desde el formulario de edición de datos básicos
         updatedPersonal.setClaveOcupacion(personalEconomicoDTO.getClaveOcupacion());
         updatedPersonal.setEconomico(economico);
         return updatedPersonal;
@@ -270,29 +284,78 @@ public class PersonalServiceImpl implements PersonalService {
         if (idEconomico <= 0) {
             throw new IllegalArgumentException("El ID del económico no puede ser nulo o menor o igual a cero.");
         }
-        Page<Personal> personalList = personalRepository.findPersonalByeconomicoId(idEconomico, Pageable.unpaged());
-        if (personalList != null && !personalList.isEmpty()) {
-            return personalList.map(personal -> BbccPersonalDTO.builder()
-                    .idPersonal(personal.getIdPersona())
-                    .nombre(personal.getNombre())
-                    .dni(personal.getDni())
-                    .id_baseCotizacion(personal.getBasesCotizacion().getId_baseCotizacion())
-                    .basesCotizacionContingenciasComunesEnero(personal.getBasesCotizacion().getBasesCotizacionContingenciasComunesEnero())
-                    .basesCotizacionContingenciasComunesFebrero(personal.getBasesCotizacion().getBasesCotizacionContingenciasComunesFebrero())
-                    .basesCotizacionContingenciasComunesMarzo(personal.getBasesCotizacion().getBasesCotizacionContingenciasComunesMarzo())
-                    .basesCotizacionContingenciasComunesAbril(personal.getBasesCotizacion().getBasesCotizacionContingenciasComunesAbril())
-                    .basesCotizacionContingenciasComunesMayo(personal.getBasesCotizacion().getBasesCotizacionContingenciasComunesMayo())
-                    .basesCotizacionContingenciasComunesJunio(personal.getBasesCotizacion().getBasesCotizacionContingenciasComunesJunio())
-                    .basesCotizacionContingenciasComunesJulio(personal.getBasesCotizacion().getBasesCotizacionContingenciasComunesJulio())
-                    .basesCotizacionContingenciasComunesAgosto(personal.getBasesCotizacion().getBasesCotizacionContingenciasComunesAgosto())
-                    .basesCotizacionContingenciasComunesSeptiembre(personal.getBasesCotizacion().getBasesCotizacionContingenciasComunesSeptiembre())
-                    .basesCotizacionContingenciasComunesOctubre(personal.getBasesCotizacion().getBasesCotizacionContingenciasComunesOctubre())
-                    .basesCotizacionContingenciasComunesNoviembre(personal.getBasesCotizacion().getBasesCotizacionContingenciasComunesNoviembre())
-                    .basesCotizacionContingenciasComunesDiciembre(personal.getBasesCotizacion().getBasesCotizacionContingenciasComunesDiciembre())
-                    .build());
-        } else {
-            return Page.empty();
+
+        List<BbccPersonalDTO> result = new ArrayList<>();
+
+        // Obtener todas las BasesCotizacion vinculadas a periodos de contrato para este económico
+        List<BasesCotizacion> periodoBases = basesCotizacionRepository.findAllPeriodoLinkedByEconomico(idEconomico);
+
+        // Recopilar IDs de personal que ya tienen filas de periodo
+        java.util.Set<Long> personalConPeriodos = new java.util.HashSet<>();
+        for (BasesCotizacion bases : periodoBases) {
+            personalConPeriodos.add(bases.getPersona().getIdPersona());
+            PeriodoContrato periodo = bases.getPeriodoContrato();
+            result.add(toBbccDTO(bases, periodo));
         }
+
+        // Para personal SIN periodos, incluir la fila por defecto (legacy)
+        Page<Personal> personalList = personalRepository.findPersonalByeconomicoId(idEconomico, Pageable.unpaged());
+        if (personalList != null) {
+            for (Personal personal : personalList.getContent()) {
+                if (!personalConPeriodos.contains(personal.getIdPersona())) {
+                    result.add(toBbccDTO(personal.getBasesCotizacion(), null));
+                }
+            }
+        }
+
+        // Ordenar por nombre
+        result.sort((a, b) -> {
+            int cmp = a.getNombre().compareToIgnoreCase(b.getNombre());
+            if (cmp != 0) return cmp;
+            // Dentro del mismo empleado, ordenar por fecha de alta
+            if (a.getFechaAlta() != null && b.getFechaAlta() != null) {
+                return a.getFechaAlta().compareTo(b.getFechaAlta());
+            }
+            return 0;
+        });
+
+        // Emular paginación manual
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), result.size());
+        List<BbccPersonalDTO> pageContent = start < result.size() ? result.subList(start, end) : List.of();
+        return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, result.size());
+    }
+
+    private BbccPersonalDTO toBbccDTO(BasesCotizacion bases, PeriodoContrato periodo) {
+        Personal personal = bases.getPersona();
+        BbccPersonalDTO.BbccPersonalDTOBuilder builder = BbccPersonalDTO.builder()
+                .idPersonal(personal.getIdPersona())
+                .nombre(personal.getNombre())
+                .dni(personal.getDni())
+                .id_baseCotizacion(bases.getId_baseCotizacion())
+                .basesCotizacionContingenciasComunesEnero(bases.getBasesCotizacionContingenciasComunesEnero())
+                .basesCotizacionContingenciasComunesFebrero(bases.getBasesCotizacionContingenciasComunesFebrero())
+                .basesCotizacionContingenciasComunesMarzo(bases.getBasesCotizacionContingenciasComunesMarzo())
+                .basesCotizacionContingenciasComunesAbril(bases.getBasesCotizacionContingenciasComunesAbril())
+                .basesCotizacionContingenciasComunesMayo(bases.getBasesCotizacionContingenciasComunesMayo())
+                .basesCotizacionContingenciasComunesJunio(bases.getBasesCotizacionContingenciasComunesJunio())
+                .basesCotizacionContingenciasComunesJulio(bases.getBasesCotizacionContingenciasComunesJulio())
+                .basesCotizacionContingenciasComunesAgosto(bases.getBasesCotizacionContingenciasComunesAgosto())
+                .basesCotizacionContingenciasComunesSeptiembre(bases.getBasesCotizacionContingenciasComunesSeptiembre())
+                .basesCotizacionContingenciasComunesOctubre(bases.getBasesCotizacionContingenciasComunesOctubre())
+                .basesCotizacionContingenciasComunesNoviembre(bases.getBasesCotizacionContingenciasComunesNoviembre())
+                .basesCotizacionContingenciasComunesDiciembre(bases.getBasesCotizacionContingenciasComunesDiciembre());
+
+        if (periodo != null) {
+            builder.idPeriodoContrato(periodo.getId())
+                    .claveContrato(periodo.getClaveContrato().getClave())
+                    .descripcionContrato(periodo.getClaveContrato().getDescripcion())
+                    .fechaAlta(periodo.getFechaAlta())
+                    .fechaBaja(periodo.getFechaBaja())
+                    .anioFiscal(periodo.getAnioFiscal());
+        }
+
+        return builder.build();
     }
 
     @Override
@@ -302,8 +365,6 @@ public class PersonalServiceImpl implements PersonalService {
         }
         Retribucion retribucion = retribucionRepository.findById(actualizarRetribucionDTO.getId())
                 .orElseThrow(() -> new IllegalArgumentException("No existe una retribución con el ID proporcionado."));
-
-        this.costeHoraService.calcularCosteHoraEconomico(retribucion.getPersonal().getEconomico());
 
         switch (actualizarRetribucionDTO.getCampoActualizado()) {
             case CamposRetribuciones.importeRetribucionNoIT:
@@ -326,6 +387,8 @@ public class PersonalServiceImpl implements PersonalService {
         }
         try {
             retribucionRepository.save(retribucion);
+            // Recalcular DESPUÉS de guardar el nuevo valor
+            this.costeHoraService.calcularCosteHoraEconomico(retribucion.getPersonal().getEconomico());
         } catch (Exception e) {
             throw new RuntimeException("Error al actualizar la retribución del personal: " + e.getMessage(), e);
         }
@@ -387,76 +450,56 @@ public class PersonalServiceImpl implements PersonalService {
     }
 
     @Override
-    public Page<AltaEjercicioDTO> obtenerTodoPersonalAltaEjercicio(Long idEconomico, Pageable pageable) {
-        if (idEconomico <= 0) {
-            throw new IllegalArgumentException("El ID del económico no puede ser nulo o menor o igual a cero.");
-        }
-        Page<Personal> personalList = personalRepository.findPersonalByeconomicoId(idEconomico, pageable);
-        if (personalList != null && !personalList.isEmpty()) {
-            return personalList.map(personal -> AltaEjercicioDTO.builder()
-                    .idPersona(personal.getIdPersona())
-                    .nombre(personal.getNombre())
-                    .dni(personal.getDni())
-                    .idAltaEjercicio(personal.getHorasPersonal().getId())
-                    .fechaAltaEjercicio(personal.getHorasPersonal().getFechaAltaEjercicio())
-                    .fechaBajaEjercicio(personal.getHorasPersonal().getFechaBajaEjercicio())
-                    .horasConvenioAnual(personal.getHorasPersonal().getHorasConvenioAnual())
-                    .horasMaximasAnuales(personal.getHorasPersonal().getHorasMaximasAnuales())
-                    .build());
-        } else {
-            return Page.empty();
-        }
-    }
-
-    @Override
-    public void actualizarAltaEjercicio(ActualizarAltaEjercicioDTO actualizarAltaEjercicioDTO) {
-        if (actualizarAltaEjercicioDTO.getIdAltaEjercicio() <= 0) {
-            throw new IllegalArgumentException("El ID del alta de ejercicio no puede ser nulo o menor o igual a cero.");
-        }
-
-        HorasPersonal horasPersonal = horasEmpleadoRepository.findById(actualizarAltaEjercicioDTO.getIdAltaEjercicio())
-                .orElseThrow(() -> new IllegalArgumentException("No existe un alta de ejercicio con el ID proporcionado."));
-
-        this.costeHoraService.calcularCosteHoraEconomico(horasPersonal.getPersonal().getEconomico());
-
-        switch (actualizarAltaEjercicioDTO.getCampoActualizado()) {
-            case "fechaAltaEjercicio":
-                horasPersonal.setFechaAltaEjercicio(OffsetDateTime.parse(actualizarAltaEjercicioDTO.getValor()).toLocalDate());
-                break;
-            case "fechaBajaEjercicio":
-                horasPersonal.setFechaBajaEjercicio(OffsetDateTime.parse(actualizarAltaEjercicioDTO.getValor()).toLocalDate());
-                break;
-            case "horasConvenioAnual":
-                horasPersonal.setHorasConvenioAnual(Long.valueOf(actualizarAltaEjercicioDTO.getValor()));
-                break;
-            default:
-                throw new IllegalArgumentException("Campo actualizado no válido: " + actualizarAltaEjercicioDTO.getCampoActualizado());
-        }
-
-        try {
-            personalRepository.save(horasPersonal.getPersonal()); // se persiste a través de la relación con Personal
-        } catch (Exception e) {
-            throw new RuntimeException("Error al actualizar el alta de ejercicio del personal: " + e.getMessage(), e);
-        }
-    }
-
-    @Override
     public Page<BajasLaboralesDTO> obtenerBajasLaboralesPorEconomico(Long idEconomico, Pageable pageable) {
         if (idEconomico <= 0) {
             throw new IllegalArgumentException("El ID del económico no puede ser nulo o menor o igual a cero.");
         }
-        this.actualizarTodasBajasLaborales();
+        Economico economico = economicoRepository.findById(idEconomico)
+                .orElseThrow(() -> new IDEconomicoException("Económico no encontrado con ID: " + idEconomico));
+        int anualidad = Math.toIntExact(economico.getAnualidad());
+        long diasAnualidad = java.time.Year.of(anualidad).isLeap() ? 366 : 365;
+        BigDecimal diasAnualidadDecimal = BigDecimal.valueOf(diasAnualidad);
+
         Page<BajaLaboral> bajaslaboralespersonalEconomico = bajaLaboralRepository.findByPersonalEconomicoIdEconomico(idEconomico, pageable);
         if (bajaslaboralespersonalEconomico != null && !bajaslaboralespersonalEconomico.isEmpty()) {
-            return bajaslaboralespersonalEconomico.map(bajaLaboral -> BajasLaboralesDTO.builder()
-                    .idPersona(bajaLaboral.getPersonal().getIdPersona())
-                    .nombre(bajaLaboral.getPersonal().getNombre())
-                    .dni(bajaLaboral.getPersonal().getDni())
-                    .idBajaLaboral(bajaLaboral.getId())
-                    .fechaInicio(bajaLaboral.getFechaInicio())
-                    .fechaFin(bajaLaboral.getFechaFin())
-                    .horasDeBaja(bajaLaboral.getHorasDeBaja())
-                    .build());
+            return bajaslaboralespersonalEconomico.map(bajaLaboral -> {
+                Personal personal = bajaLaboral.getPersonal();
+                LocalDate inicioAnio = LocalDate.of(anualidad, 1, 1);
+                LocalDate finAnio = LocalDate.of(anualidad, 12, 31);
+                
+                LocalDate fechaInicioEfectiva = bajaLaboral.getFechaInicio().isBefore(inicioAnio) ? inicioAnio : bajaLaboral.getFechaInicio();
+                LocalDate fechaFinEfectiva = bajaLaboral.getFechaFin() == null || bajaLaboral.getFechaFin().isAfter(finAnio) ? finAnio : bajaLaboral.getFechaFin();
+                
+                BigDecimal horasBaja = BigDecimal.ZERO;
+                if (!fechaInicioEfectiva.isAfter(fechaFinEfectiva)) {
+                    for (PeriodoContrato pc : personal.getPeriodosContrato()) {
+                        LocalDate pcInicio = pc.getFechaAlta().isBefore(inicioAnio) ? inicioAnio : pc.getFechaAlta();
+                        LocalDate pcFin = pc.getFechaBaja() == null || pc.getFechaBaja().isAfter(finAnio) ? finAnio : pc.getFechaBaja();
+                        
+                        LocalDate overlapInicio = pcInicio.isAfter(fechaInicioEfectiva) ? pcInicio : fechaInicioEfectiva;
+                        LocalDate overlapFin = pcFin.isBefore(fechaFinEfectiva) ? pcFin : fechaFinEfectiva;
+                        
+                        if (!overlapInicio.isAfter(overlapFin)) {
+                            long diasSolapados = java.time.temporal.ChronoUnit.DAYS.between(overlapInicio, overlapFin) + 1;
+                            BigDecimal horasDia = BigDecimal.valueOf(pc.getHorasConvenio()).divide(diasAnualidadDecimal, 6, RoundingMode.HALF_UP);
+                            BigDecimal horasPc = horasDia.multiply(BigDecimal.valueOf(diasSolapados))
+                                    .multiply(pc.getPorcentajeJornada())
+                                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                            horasBaja = horasBaja.add(horasPc);
+                        }
+                    }
+                }
+
+                return BajasLaboralesDTO.builder()
+                        .idPersona(personal.getIdPersona())
+                        .nombre(personal.getNombre() + " " + personal.getApellidos())
+                        .dni(personal.getDni())
+                        .idBajaLaboral(bajaLaboral.getId())
+                        .fechaInicio(bajaLaboral.getFechaInicio())
+                        .fechaFin(bajaLaboral.getFechaFin())
+                        .horasDeBaja(horasBaja.setScale(0, RoundingMode.HALF_UP).longValue())
+                        .build();
+            });
         } else {
             return Page.empty();
         }
@@ -704,6 +747,8 @@ public class PersonalServiceImpl implements PersonalService {
                     .retribucionTotal(ch.getRetribucionTotal())
                     .costeSS(ch.getCosteSS())
                     .horasMaximas(ch.getHorasMaximas())
+                    .horasEfectivas(ch.getHorasEfectivas())
+                    .horasBaja(ch.getHorasBaja())
                     .costeHora(ch.getCosteHora())
                     .cuotaCC(ch.getCuotaCC())
                     .cuotaATEP(ch.getCuotaATEP())

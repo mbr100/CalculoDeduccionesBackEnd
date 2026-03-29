@@ -27,6 +27,6 @@ public class PeriodoContratoDTO {
     private LocalDate fechaBaja;
     private Integer anioFiscal;
     private BigDecimal porcentajeJornada;
-    private BigDecimal baseCcMensual;
-    private BigDecimal baseCpMensual;
+    private Long horasConvenio;
+    private Long horasHabiles;
 }
