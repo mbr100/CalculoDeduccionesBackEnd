@@ -2,6 +2,7 @@ package com.marioborrego.api.calculodeduccionesbackend.proyecto.business.impl;
 
 import com.marioborrego.api.calculodeduccionesbackend.economico.domain.models.Economico;
 import com.marioborrego.api.calculodeduccionesbackend.economico.domain.repository.EconomicoRepository;
+import com.marioborrego.api.calculodeduccionesbackend.personal.business.impl.CosteHoraService;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.Personal;
 import com.marioborrego.api.calculodeduccionesbackend.personal.domain.repository.PersonalRepository;
 import com.marioborrego.api.calculodeduccionesbackend.personal.presentation.dto.ActualizacionDTO;
@@ -16,6 +17,7 @@ import com.marioborrego.api.calculodeduccionesbackend.proyecto.presentation.dto.
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -27,12 +29,17 @@ public class ProyectoServiceImpl implements ProyectoService {
     private final ProyectoRepository proyectoRepository;
     private final EconomicoRepository economicoRepository;
     private final PersonalRepository personalRepository;
+    private final CosteHoraService costeHoraService;
 
 
-    public ProyectoServiceImpl(ProyectoRepository proyectoRepository, EconomicoRepository economicoRepository, PersonalRepository personalRepository) {
+    public ProyectoServiceImpl(ProyectoRepository proyectoRepository,
+                               EconomicoRepository economicoRepository,
+                               PersonalRepository personalRepository,
+                               CosteHoraService costeHoraService) {
         this.personalRepository = personalRepository;
         this.economicoRepository = economicoRepository;
         this.proyectoRepository = proyectoRepository;
+        this.costeHoraService = costeHoraService;
     }
 
     @Override
@@ -128,8 +135,20 @@ public class ProyectoServiceImpl implements ProyectoService {
     }
 
     @Override
+    @Transactional
     public MatrizAsignacionesDTO listarPersonalPorProyectoAsignacion(Long idEconomico) {
+        if (idEconomico == null || idEconomico <= 0) {
+            throw new IllegalArgumentException("El ID del económico no puede ser nulo o menor o igual a cero.");
+        }
+
+        Economico economico = economicoRepository.findById(idEconomico)
+                .orElseThrow(() -> new IllegalArgumentException("No se encontró un económico con el ID proporcionado: " + idEconomico));
+
+        // Recalcula y persiste horas/coste para devolver siempre datos actualizados.
+        costeHoraService.calcularCosteHoraEconomico(economico);
+
         List<Proyecto> proyectos = proyectoRepository.findAllByIdEconomico(idEconomico);
+        // Releer tras el recálculo para usar los valores ya persistidos en BBDD.
         List<Personal> personas = personalRepository.findByEconomicoId(idEconomico);
         if (proyectos.isEmpty()) {
             throw new IllegalArgumentException("No se encontraron proyectos para el ID de económico proporcionado: " + idEconomico);
@@ -151,8 +170,8 @@ public class ProyectoServiceImpl implements ProyectoService {
                                     .orElse(0.0)
                             ).toList();
                     Double horasEfectivas = persona.getCosteHoraPersonal() != null
-                            && persona.getCosteHoraPersonal().getHorasEfectivas() != null
-                            ? persona.getCosteHoraPersonal().getHorasEfectivas().doubleValue()
+                            && persona.getCosteHoraPersonal().getHorasMaximas() != null
+                            ? persona.getCosteHoraPersonal().getHorasMaximas().doubleValue()
                             : 0.0;
                     return FilaAsignacionDTO.builder()
                             .idPersonal(persona.getIdPersona())

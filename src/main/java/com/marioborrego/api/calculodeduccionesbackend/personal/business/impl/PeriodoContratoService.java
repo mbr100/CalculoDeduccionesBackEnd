@@ -104,8 +104,15 @@ public class PeriodoContratoService {
             periodo.setClaveContrato(clave);
         }
 
-        if (dto.getFechaAlta() != null) periodo.setFechaAlta(dto.getFechaAlta());
-        if (dto.getFechaBaja() != null) periodo.setFechaBaja(dto.getFechaBaja());
+        boolean fechasCambiaron = false;
+        if (dto.getFechaAlta() != null) {
+            fechasCambiaron = !dto.getFechaAlta().equals(periodo.getFechaAlta());
+            periodo.setFechaAlta(dto.getFechaAlta());
+        }
+        if (dto.getFechaBaja() != null) {
+            fechasCambiaron = fechasCambiaron || !dto.getFechaBaja().equals(periodo.getFechaBaja());
+            periodo.setFechaBaja(dto.getFechaBaja());
+        }
         if (dto.getPorcentajeJornada() != null) periodo.setPorcentajeJornada(dto.getPorcentajeJornada());
         if (dto.getHorasConvenio() != null) periodo.setHorasConvenio(dto.getHorasConvenio());
 
@@ -116,6 +123,18 @@ public class PeriodoContratoService {
                         periodo.getPersonal().getIdPersona(), periodo.getAnioFiscal())
                 .stream().filter(p -> !p.getId().equals(periodo.getId())).toList();
         validarNoSolapamiento(periodo, existentes);
+
+        // Anular BBCC de meses fuera del nuevo rango de fechas
+        if (fechasCambiaron && periodo.getBasesCotizacionPeriodo() != null) {
+            int anio = periodo.getAnioFiscal();
+            LocalDate inicioAnio = LocalDate.of(anio, 1, 1);
+            LocalDate finAnio = LocalDate.of(anio, 12, 31);
+            LocalDate desde = periodo.getFechaAlta().isBefore(inicioAnio) ? inicioAnio : periodo.getFechaAlta();
+            LocalDate hasta = periodo.getFechaBaja() != null
+                    ? (periodo.getFechaBaja().isAfter(finAnio) ? finAnio : periodo.getFechaBaja())
+                    : finAnio;
+            periodo.getBasesCotizacionPeriodo().anularBasesForaDeRango(desde, hasta, anio);
+        }
 
         return toDTO(periodoContratoRepository.save(periodo));
     }

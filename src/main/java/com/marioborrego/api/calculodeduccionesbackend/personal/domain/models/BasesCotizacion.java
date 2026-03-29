@@ -84,6 +84,38 @@ public class BasesCotizacion {
     @JoinColumn(name = "persona_id_personal")
     private Personal persona;
 
+    /**
+     * Pone a 0 las bases de los meses que quedan fuera del rango [desde, hasta] dentro del año fiscal.
+     * Un mes se considera fuera si NO hay solapamiento entre [inicioMes, finMes] y [desde, hasta].
+     */
+    public void anularBasesForaDeRango(LocalDate desde, LocalDate hasta, int anioFiscal) {
+        for (int m = 1; m <= 12; m++) {
+            LocalDate inicioMes = LocalDate.of(anioFiscal, m, 1);
+            LocalDate finMes = inicioMes.withDayOfMonth(inicioMes.lengthOfMonth());
+            if (inicioMes.isAfter(hasta) || finMes.isBefore(desde)) {
+                setBaseCotizacionContingenciasComunesMes(m, 0L);
+            }
+        }
+    }
+
+    public void setBaseCotizacionContingenciasComunesMes(int mes, Long valor) {
+        switch (mes) {
+            case 1 -> basesCotizacionContingenciasComunesEnero = valor;
+            case 2 -> basesCotizacionContingenciasComunesFebrero = valor;
+            case 3 -> basesCotizacionContingenciasComunesMarzo = valor;
+            case 4 -> basesCotizacionContingenciasComunesAbril = valor;
+            case 5 -> basesCotizacionContingenciasComunesMayo = valor;
+            case 6 -> basesCotizacionContingenciasComunesJunio = valor;
+            case 7 -> basesCotizacionContingenciasComunesJulio = valor;
+            case 8 -> basesCotizacionContingenciasComunesAgosto = valor;
+            case 9 -> basesCotizacionContingenciasComunesSeptiembre = valor;
+            case 10 -> basesCotizacionContingenciasComunesOctubre = valor;
+            case 11 -> basesCotizacionContingenciasComunesNoviembre = valor;
+            case 12 -> basesCotizacionContingenciasComunesDiciembre = valor;
+            default -> throw new IllegalArgumentException("Mes no válido: " + mes);
+        }
+    }
+
     private long valorOrZero(Long valor) {
         return valor != null ? valor : 0L;
     }
