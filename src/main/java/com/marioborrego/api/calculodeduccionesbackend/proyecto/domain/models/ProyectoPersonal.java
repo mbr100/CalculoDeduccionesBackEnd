@@ -4,6 +4,9 @@ import com.marioborrego.api.calculodeduccionesbackend.personal.domain.models.Per
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Builder
 @Getter
 @Setter
@@ -26,4 +29,8 @@ public class ProyectoPersonal {
 
     @Column(name = "horas_asignadas")
     private Double horasAsignadas;
+
+    @OneToMany(mappedBy = "proyectoPersonal", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @Builder.Default
+    private Set<AsignacionFase> asignacionesFase = new HashSet<>();
 }

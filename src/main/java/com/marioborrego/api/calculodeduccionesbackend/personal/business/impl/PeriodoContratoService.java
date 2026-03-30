@@ -62,6 +62,13 @@ public class PeriodoContratoService {
         ClaveContrato clave = claveContratoRepository.findById(dto.getClaveContrato())
                 .orElseThrow(() -> new IllegalArgumentException("Clave de contrato no encontrada: " + dto.getClaveContrato()));
 
+        Long horasConvenio = dto.getHorasConvenio();
+        if (personal.getEconomico() != null && personal.getEconomico().getHorasConvenio() != null) {
+            horasConvenio = personal.getEconomico().getHorasConvenio();
+        } else if (horasConvenio == null) {
+            horasConvenio = 1720L;
+        }
+
         PeriodoContrato periodo = PeriodoContrato.builder()
                 .personal(personal)
                 .claveContrato(clave)
@@ -69,7 +76,7 @@ public class PeriodoContratoService {
                 .fechaBaja(dto.getFechaBaja())
                 .anioFiscal(dto.getAnioFiscal())
                 .porcentajeJornada(dto.getPorcentajeJornada())
-                .horasConvenio(dto.getHorasConvenio() != null ? dto.getHorasConvenio() : 1720L)
+                .horasConvenio(horasConvenio)
                 .build();
 
         validarPeriodo(periodo, clave);
@@ -114,7 +121,12 @@ public class PeriodoContratoService {
             periodo.setFechaBaja(dto.getFechaBaja());
         }
         if (dto.getPorcentajeJornada() != null) periodo.setPorcentajeJornada(dto.getPorcentajeJornada());
-        if (dto.getHorasConvenio() != null) periodo.setHorasConvenio(dto.getHorasConvenio());
+        
+        if (periodo.getPersonal().getEconomico() != null && periodo.getPersonal().getEconomico().getHorasConvenio() != null) {
+            periodo.setHorasConvenio(periodo.getPersonal().getEconomico().getHorasConvenio());
+        } else if (dto.getHorasConvenio() != null) {
+            periodo.setHorasConvenio(dto.getHorasConvenio());
+        }
 
         validarPeriodo(periodo, periodo.getClaveContrato());
 

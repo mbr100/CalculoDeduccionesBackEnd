@@ -35,6 +35,10 @@ public class Proyecto {
     @Builder.Default
     private Set<ProyectoPersonal> proyectoPersonales = new HashSet<>();
 
+    @OneToMany(mappedBy = "proyecto", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @Builder.Default
+    private Set<FaseProyecto> fases = new HashSet<>();
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_economico", nullable = false)
     private Economico economico;
