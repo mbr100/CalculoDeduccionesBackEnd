@@ -111,15 +111,15 @@ public class EconomicosController {
             @ApiResponse(responseCode = "400", description = "Error al actualizar los datos del económico")
     })
     @PutMapping("/actualizar")
-    public ResponseEntity<Boolean> actualizarDatosEconomico(@RequestBody ActualizarDatosEconomicoDTO economico) {
+    public ResponseEntity<EconomicoDTO> actualizarDatosEconomico(@RequestBody ActualizarDatosEconomicoDTO economico) {
         log.info("Petición para actualizar los datos del económico: {}", economico);
         try {
-            economicoService.actualizarDatosEconomico(economico);
+            EconomicoDTO updated = economicoService.actualizarDatosEconomico(economico);
             log.info("Datos del económico actualizados correctamente: {}", economico);
-            return ResponseEntity.status(HttpStatus.OK).body(true);
+            return ResponseEntity.status(HttpStatus.OK).body(updated);
         } catch (Exception e) {
             log.error("Error al actualizar los datos del económico: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(false);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
 

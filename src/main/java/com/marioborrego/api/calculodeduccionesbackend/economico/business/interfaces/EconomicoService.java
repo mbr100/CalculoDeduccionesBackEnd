@@ -15,5 +15,5 @@ public interface EconomicoService {
     boolean comprobarExistenciaEconomico(@NotBlank(message = "El CIF es obligatorio") @Size(min = 9, max = 9, message = "El CIF debe tener 9 caracteres") String cif, @NotNull(message = "La anualidad es obligatoria") Long anualidad);
     EconomicoCreadoDTO crearEconomico(CrearEconomicoDTO crearEconomicoDTO);
     EconomicoDTO obtenerEconomico(Long idEconomico);
-    void actualizarDatosEconomico(ActualizarDatosEconomicoDTO economico);
+    EconomicoDTO actualizarDatosEconomico(ActualizarDatosEconomicoDTO economico);
 }

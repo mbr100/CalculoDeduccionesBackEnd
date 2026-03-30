@@ -122,7 +122,7 @@ public class EconomicoServiceImpl implements EconomicoService {
     }
 
     @Override
-    public void actualizarDatosEconomico(ActualizarDatosEconomicoDTO economico) {
+    public EconomicoDTO actualizarDatosEconomico(ActualizarDatosEconomicoDTO economico) {
         try {
             Economico economicoEntity = economicoRepository.findById(economico.getId()).orElseThrow(() -> new EconomicoNoEncontrado(ECONOMICO_NOT_FOUND_MESSAGE + economico.getId()));
             economicoEntity.setNombre(economico.getNombre());
@@ -140,7 +140,25 @@ public class EconomicoServiceImpl implements EconomicoService {
             }
             economicoEntity.setPresentacionEmpresa(economico.getPresentacionEmpresa());
             economicoEntity.setDescripcionIDI(economico.getDescripcionIDI());
-            economicoRepository.save(economicoEntity);
+            Economico saved = economicoRepository.save(economicoEntity);
+            return EconomicoDTO.builder()
+                    .id(saved.getIdEconomico())
+                    .nombre(saved.getNombre())
+                    .cif(saved.getCif())
+                    .direccion(saved.getDireccion())
+                    .telefono(saved.getTelefono())
+                    .nombreContacto(saved.getNombreContacto())
+                    .emailContacto(saved.getEmailContacto())
+                    .horasConvenio(saved.getHorasConvenio())
+                    .urllogo(saved.getUrllogo())
+                    .urlWeb(saved.getUrlWeb())
+                    .cnae(saved.getCNAE())
+                    .anualidad(saved.getAnualidad())
+                    .esPyme(saved.isEsPyme())
+                    .selloPymeInnovadora(saved.isSelloPymeInnovadora())
+                    .presentacionEmpresa(saved.getPresentacionEmpresa())
+                    .descripcionIDI(saved.getDescripcionIDI())
+                    .build();
         } catch (Exception e) {
             throw new RuntimeException("Error al actualizar los datos del económico" + e.getMessage(), e);
         }
