@@ -91,7 +91,7 @@ public class DataLoader {
     // ═══════════════════════════════════════════════════════════════════════
     //  SEED 1: Tecnova Software IDI — 2024
     //  CNAE 6201, PyME con sello innovadora, 1740h convenio
-    //  Escenarios: indefinido todo el año, temporal con baja médica,
+    //  Escenarios: indefinido all el año, temporal con baja médica,
     //              cambio de contrato temporal→indefinido (2 períodos),
     //              clave ocupación "h" (seguridad)
     // ═══════════════════════════════════════════════════════════════════════
@@ -112,7 +112,7 @@ public class DataLoader {
                 "El ejercicio 2024 combina desarrollo de plataforma IA, sensorizacion industrial y un equipo mixto con personal investigador y de soporte."
         );
 
-        // Laura: Investigadora principal, indefinida todo el año, bonificación investigador 40%
+        // Laura: Investigadora principal, indefinida all el año, bonificación investigador 40%
         Personal laura = crearPersonal(
                 economico,
                 "Laura",
@@ -132,7 +132,7 @@ public class DataLoader {
                 List.of(),
                 List.of(bonificacionInvestigador(2024, "40.00", LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31)))
         );
-        // Período único: indefinida "100" todo el año, jornada completa
+        // Período único: indefinida "100" all el año, jornada completa
         addPeriodo(laura, claves.get("100"), LocalDate.of(2024, 1, 1), null, 2024, "100.00", 1740L,
                 bases(3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200));
 
@@ -308,7 +308,7 @@ public class DataLoader {
         addPeriodo(nuria, claves.get("402"), LocalDate.of(2025, 7, 1), null, 2025, "100.00", 1700L,
                 bases(0, 0, 0, 0, 0, 0, 2550, 2550, 2550, 2550, 2550, 2550));
 
-        // Pablo: Director, indefinido todo el año, clave "a" (oficina, Cuadro II AT/EP)
+        // Pablo: Director, indefinido all el año, clave "a" (oficina, Cuadro II AT/EP)
         Personal pablo = crearPersonal(
                 economico,
                 "Pablo",
@@ -328,7 +328,7 @@ public class DataLoader {
                 List.of(),
                 List.of()
         );
-        // Período único: indefinido "100" todo el año, clave "a" → AT/EP Cuadro II
+        // Período único: indefinido "100" all el año, clave "a" → AT/EP Cuadro II
         addPeriodo(pablo, claves.get("100"), LocalDate.of(2025, 1, 1), null, 2025, "100.00", 1700L,
                 bases(3900, 3900, 3900, 3900, 3900, 3900, 3900, 3900, 3900, 3900, 3900, 3900));
 
@@ -393,7 +393,7 @@ public class DataLoader {
                 "El ejercicio 2026 prueba CNAE comercial, jornada parcial, becarios y contratos de formacion."
         );
 
-        // Alicia: Administrativa, indefinida todo el año, clave "a" (oficina)
+        // Alicia: Administrativa, indefinida all el año, clave "a" (oficina)
         Personal alicia = crearPersonal(
                 economico,
                 "Alicia",
@@ -413,11 +413,11 @@ public class DataLoader {
                 List.of(),
                 List.of()
         );
-        // Período único: indefinida "100" todo el año
+        // Período único: indefinida "100" all el año
         addPeriodo(alicia, claves.get("100"), LocalDate.of(2026, 1, 1), null, 2026, "100.00", 1680L,
                 bases(2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300));
 
-        // Jorge: Investigador visión artificial, indefinido todo el año, jornada parcial 75%, bonificación investigador
+        // Jorge: Investigador visión artificial, indefinido all el año, jornada parcial 75%, bonificación investigador
         Personal jorge = crearPersonal(
                 economico,
                 "Jorge",
@@ -437,7 +437,7 @@ public class DataLoader {
                 List.of(),
                 List.of(bonificacionInvestigador(2026, "45.00", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31)))
         );
-        // Período único: indefinido "200" (tiempo parcial) todo el año, jornada 75%
+        // Período único: indefinido "200" (tiempo parcial) all el año, jornada 75%
         addPeriodo(jorge, claves.get("200"), LocalDate.of(2026, 1, 1), null, 2026, "75.00", 1680L,
                 bases(2325, 2325, 2325, 2325, 2325, 2325, 2325, 2325, 2325, 2325, 2325, 2325));
 

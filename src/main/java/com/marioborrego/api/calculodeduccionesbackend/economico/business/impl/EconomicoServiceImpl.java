@@ -148,7 +148,7 @@ public class EconomicoServiceImpl implements EconomicoService {
             economicoEntity.setPresentacionEmpresa(economico.getPresentacionEmpresa());
             economicoEntity.setDescripcionIDI(economico.getDescripcionIDI());
 
-            // Si las horas de convenio han cambiado, actualizamos todo el personal asociado
+            // Si las horas de convenio han cambiado, actualizamos all el personal asociado
             if (newHoras != null && !newHoras.equals(oldHoras)) {
                 log.info("Propagando cambio de horas convenio ({}) a personal del económico {}", newHoras, economicoEntity.getIdEconomico());
                 for (Personal p : economicoEntity.getPersonal()) {
