@@ -1,5 +1,6 @@
 package com.marioborrego.api.calculodeduccionesbackend.proyecto.business.impl;
 
+import com.marioborrego.api.calculodeduccionesbackend.amortizacion.domain.repository.ImputacionActivoFaseRepository;
 import com.marioborrego.api.calculodeduccionesbackend.colaboracionesexternas.domain.repository.ImputacionFacturaFaseRepository;
 import com.marioborrego.api.calculodeduccionesbackend.materialfungible.domain.repository.ImputacionMaterialFaseRepository;
 import com.marioborrego.api.calculodeduccionesbackend.economico.presentation.dto.PartidaGastoDTO;
@@ -30,19 +31,22 @@ public class FaseProyectoServiceImpl {
     private final ProyectoPersonalRepository proyectoPersonalRepository;
     private final ImputacionFacturaFaseRepository imputacionFacturaFaseRepository;
     private final ImputacionMaterialFaseRepository imputacionMaterialFaseRepository;
+    private final ImputacionActivoFaseRepository imputacionActivoFaseRepository;
 
     public FaseProyectoServiceImpl(FaseProyectoRepository faseProyectoRepository,
                                    AsignacionFaseRepository asignacionFaseRepository,
                                    ProyectoRepository proyectoRepository,
                                    ProyectoPersonalRepository proyectoPersonalRepository,
                                    ImputacionFacturaFaseRepository imputacionFacturaFaseRepository,
-                                   ImputacionMaterialFaseRepository imputacionMaterialFaseRepository) {
+                                   ImputacionMaterialFaseRepository imputacionMaterialFaseRepository,
+                                   ImputacionActivoFaseRepository imputacionActivoFaseRepository) {
         this.faseProyectoRepository = faseProyectoRepository;
         this.asignacionFaseRepository = asignacionFaseRepository;
         this.proyectoRepository = proyectoRepository;
         this.proyectoPersonalRepository = proyectoPersonalRepository;
         this.imputacionFacturaFaseRepository = imputacionFacturaFaseRepository;
         this.imputacionMaterialFaseRepository = imputacionMaterialFaseRepository;
+        this.imputacionActivoFaseRepository = imputacionActivoFaseRepository;
     }
 
     public List<FaseProyectoDTO> listarFases(Long idProyecto) {
@@ -207,15 +211,18 @@ public class FaseProyectoServiceImpl {
                     .mapToDouble(i -> i.getImporte())
                     .sum();
 
+            double gastoAmortizacionFase = imputacionActivoFaseRepository.findByFaseIdFase(fase.getIdFase())
+                    .stream().mapToDouble(i -> i.getImporte()).sum();
+
             List<PartidaGastoDTO> partidas = Arrays.asList(
                     PartidaGastoDTO.builder().tipoGasto("Personal").importe(gastoPersonalFase).build(),
                     PartidaGastoDTO.builder().tipoGasto("Colaboraciones Externas").importe(gastoColaboracionesFase).build(),
                     PartidaGastoDTO.builder().tipoGasto("Materiales Fungibles").importe(gastoMaterialesFase).build(),
-                    PartidaGastoDTO.builder().tipoGasto("Amortizaciones").importe(0.0).build(),
+                    PartidaGastoDTO.builder().tipoGasto("Amortizaciones").importe(gastoAmortizacionFase).build(),
                     PartidaGastoDTO.builder().tipoGasto("Otros").importe(0.0).build()
             );
 
-            double totalFase = gastoPersonalFase + gastoColaboracionesFase + gastoMaterialesFase;
+            double totalFase = gastoPersonalFase + gastoColaboracionesFase + gastoMaterialesFase + gastoAmortizacionFase;
             double deduccion = totalFase * porcentajeDeduccion / 100.0;
 
             return ResumenGastoFaseDTO.builder()

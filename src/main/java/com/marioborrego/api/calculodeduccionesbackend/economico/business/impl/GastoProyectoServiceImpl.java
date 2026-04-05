@@ -1,5 +1,6 @@
 package com.marioborrego.api.calculodeduccionesbackend.economico.business.impl;
 
+import com.marioborrego.api.calculodeduccionesbackend.amortizacion.domain.repository.ActivoAmortizableRepository;
 import com.marioborrego.api.calculodeduccionesbackend.colaboracionesexternas.domain.models.FacturaColaboracion;
 import com.marioborrego.api.calculodeduccionesbackend.colaboracionesexternas.domain.repository.FacturaColaboracionRepository;
 import com.marioborrego.api.calculodeduccionesbackend.materialfungible.domain.repository.FacturaMaterialRepository;
@@ -24,13 +25,16 @@ public class GastoProyectoServiceImpl implements GastoProyectoService {
     private final ProyectoRepository proyectoRepository;
     private final FacturaColaboracionRepository facturaColaboracionRepository;
     private final FacturaMaterialRepository facturaMaterialRepository;
+    private final ActivoAmortizableRepository activoAmortizableRepository;
 
     public GastoProyectoServiceImpl(ProyectoRepository proyectoRepository,
                                     FacturaColaboracionRepository facturaColaboracionRepository,
-                                    FacturaMaterialRepository facturaMaterialRepository) {
+                                    FacturaMaterialRepository facturaMaterialRepository,
+                                    ActivoAmortizableRepository activoAmortizableRepository) {
         this.proyectoRepository = proyectoRepository;
         this.facturaColaboracionRepository = facturaColaboracionRepository;
         this.facturaMaterialRepository = facturaMaterialRepository;
+        this.activoAmortizableRepository = activoAmortizableRepository;
     }
 
     @Override
@@ -76,9 +80,17 @@ public class GastoProyectoServiceImpl implements GastoProyectoService {
                 .importe(totalMateriales)
                 .build();
 
+        double totalAmortizaciones = activoAmortizableRepository.findByProyectoIdProyecto(view.getIdProyecto())
+                .stream()
+                .mapToDouble(a -> {
+                    double cuota = a.getValorAdquisicion() * (a.getPorcentajeAmortizacion() / 100.0);
+                    return cuota * (a.getPorcentajeUsoProyecto() / 100.0);
+                })
+                .sum();
+
         PartidaGastoDTO partidaAmortizaciones = PartidaGastoDTO.builder()
                 .tipoGasto("Amortizaciones")
-                .importe(0.0)
+                .importe(totalAmortizaciones)
                 .build();
 
         PartidaGastoDTO partidaOtros = PartidaGastoDTO.builder()
@@ -94,7 +106,7 @@ public class GastoProyectoServiceImpl implements GastoProyectoService {
 
         // Calcular total y deducciones
         Double gastoPersonal = view.getGastoPersonal() != null ? view.getGastoPersonal() : 0.0;
-        Double total = gastoPersonal + totalColaboraciones + totalMateriales;
+        Double total = gastoPersonal + totalColaboraciones + totalMateriales + totalAmortizaciones;
         Long totalDeduccion = Math.round(total * porcentajeDeduccion / 100.0);
 
         return GastoProyectoDetalladoDTO.builder()
